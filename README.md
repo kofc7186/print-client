@@ -5,6 +5,7 @@ This Python program receives messages over a GCP PubSub subscription and sends t
 This program only runs on Windows and assumes Python v3.x as a minimum version.
 
 It assumes a specific message structure:
+```
 {
     "data": BINARY_CONTENT
     "attributes": {
@@ -13,3 +14,4 @@ It assumes a specific message structure:
         "reprint": "an optional attribute that indicates this is a reprint request"
     }
 }
+```
