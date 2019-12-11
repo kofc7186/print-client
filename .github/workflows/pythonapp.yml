@@ -7,41 +7,93 @@ on:
 jobs:
   build:
     runs-on: windows-latest
-#    services:
-#      pubsub:
-#        image: knarz/pubsub-emulator
-#        ports:
-#          - 8085/tcp
     steps:
       - uses: actions/checkout@v1
       - name: Set up Python 3.7
         uses: actions/setup-python@v1
         with:
           python-version: 3.7
-      - name: Lint with flake8
-        run: |
-          pip install -q flake8
-          # stop the build if there are Python syntax errors or undefined names
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-          flake8 . --count --exit-zero --max-complexity=15 --max-line-length=127 --statistics
       - name: Install dependencies
         run: |
           python -m pip install -q --upgrade pip
           pip install -r requirements.txt
-      - name: Run pytest
-        env:
-#          PUBSUB_EMULATOR_HOST: 127.0.0.1:${{ job.services.pubsub.ports['8085'] }}
-          PUBSUB_PROJECT_ID: square-webhook-123456
-          GCP_PROJECT: square-webhook-123456
+      - name: Lint with flake8
         run: |
-          pip install -q pytest
-          #pytest
-      - name: Run pytest.cov
+          pip install -q flake8 pytest pytest-cov
+          # stop the build if there are Python syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+          flake8 . --count --exit-zero --max-complexity=15 --max-line-length=127 --statistics
+      - name: Run unit tests
         env:
-#          PUBSUB_EMULATOR_HOST: 127.0.0.1:${{ job.services.pubsub.ports['8085'] }}
-          PUBSUB_PROJECT_ID: square-webhook-123456
-          GCP_PROJECT: square-webhook-123456
+          GCP_PROJECT: print-client-123456
         run: |
-          pip install -q pytest-cov
-          #pytest --cov=. --cov-report term-missing
+          pip install -q pytest pytest-cov
+          pytest -s -o log_cli=True -W ignore::DeprecationWarning test_unit.py
+      - name: Run unit tests with coverage
+        env:
+          GCP_PROJECT: print-client-123456
+        run: |
+          pytest --cov=. --cov-report term-missing -W ignore::DeprecationWarning test_unit.py
+      - name: Set up Java 8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 8.0.232
+          java-package: jre
+          architecture: x64
+      - name: Check Cache for Google Cloud SDK
+        uses: actions/cache@v1
+        id: cache-google-cloud-sdk
+        with:
+          path: ~\AppData\Local\Temp\google-cloud-sdk
+          key: ${{ runner.os }}-gcloud-sdk-${{ hashFiles('.github/workflows/*.yml') }} # uses the content of all GitHub Actions files as this is where the version number is set
+      - name: Download Google Cloud SDK
+        if: steps.cache-google-cloud-sdk.outputs.cache-hit != 'true'
+        run: |
+          $Url = 'https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-272.0.0-windows-x86_64-bundled-python.zip'
+          $Dest = $env:TEMP
+          $ZipFile = $Dest + '\' + $(Split-Path -Path $Url -Leaf)
+          Invoke-WebRequest -Uri $Url -OutFile $ZipFile
+
+          $ExtractShell = New-Object -ComObject Shell.Application
+          $Files = $ExtractShell.Namespace($ZipFile).Items()
+          $ExtractShell.NameSpace($Dest).CopyHere($Files)
+        shell: powershell
+      - name: Install Google Cloud SDK
+        if: steps.cache-google-cloud-sdk.outputs.cache-hit != 'true'
+        run: |
+          &$($env:TEMP + "\google-cloud-sdk\install.bat") --quiet --additional-components beta pubsub-emulator cloud-firestore-emulator
+        shell: powershell
+      - name: Update Google Cloud SDK to latest
+        if: steps.cache-google-cloud-sdk.outputs.cache-hit != 'true'
+        run: |
+          refreshenv
+          C:\Users\RUNNER~1\AppData\Local\Temp\google-cloud-sdk\bin\gcloud components update
+          C:\Users\RUNNER~1\AppData\Local\Temp\google-cloud-sdk\bin\gcloud info
+        shell: cmd
+      - name: Start GCP Pub/Sub Emulator
+        run: |
+          Start-Process -FilePath $($env:TEMP + "\google-cloud-sdk\bin\gcloud") -ArgumentList "beta emulators pubsub start --project=print-client-123456 --host-port=127.0.0.1:8538"
+        shell: powershell
+      - name: Start GCP Cloud Firestore Emulator
+        run: |
+          Start-Process -FilePath $($env:TEMP + "\google-cloud-sdk\bin\gcloud") -ArgumentList "beta emulators firestore start --project=print-client-123456 --host-port=127.0.0.1:8539"
+        shell: powershell
+      - name: Run integration tests
+        env:
+          PUBSUB_EMULATOR_HOST: 127.0.0.1:8538
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8539
+          PUBSUB_PROJECT_ID: print-client-123456
+          FIRESTORE_PROJECT_ID: print-client-123456
+          GCP_PROJECT: print-client-123456
+        run: |
+          pytest -s -o log_cli=True -W ignore::DeprecationWarning test_integration.py
+      - name: Run integration tests with coverage
+        env:
+          PUBSUB_EMULATOR_HOST: 127.0.0.1:8538
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8539
+          PUBSUB_PROJECT_ID: print-client-123456
+          FIRESTORE_PROJECT_ID: print-client-123456
+          GCP_PROJECT: print-client-123456
+        run: |
+          pytest --cov=. --cov-report term-missing -W ignore::DeprecationWarning test_integration.py
