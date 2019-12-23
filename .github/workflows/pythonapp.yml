@@ -17,6 +17,10 @@ jobs:
         run: |
           python -m pip install -q --upgrade pip
           pip install -r requirements.txt
+          echo "::set-env name=CLOUDSDK_PYTHON::${{ env.pythonLocation }}\python.exe"
+          echo "::set-env name=GCP_PROJECT::print-client-123456"
+          echo "::set-env name=GCLOUD_PATH::$($env:TEMP)\google-cloud-sdk"
+          echo "::set-env name=GCLOUD_BIN::$($env:TEMP)\google-cloud-sdk\bin\gcloud"
       - name: Lint with flake8
         run: |
           pip install -q flake8 pytest pytest-cov
@@ -25,16 +29,11 @@ jobs:
           # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
           flake8 . --count --exit-zero --max-complexity=15 --max-line-length=127 --statistics
       - name: Run unit tests
-        env:
-          GCP_PROJECT: print-client-123456
         run: |
-          pip install -q pytest pytest-cov
-          pytest -s -o log_cli=True -W ignore::DeprecationWarning test_unit.py
+          pytest -s -o log_cli=True test_unit.py
       - name: Run unit tests with coverage
-        env:
-          GCP_PROJECT: print-client-123456
         run: |
-          pytest --cov=. --cov-report term-missing -W ignore::DeprecationWarning test_unit.py
+          pytest --cov=. --cov-report term-missing test_unit.py
       - name: Set up Java 8
         uses: actions/setup-java@v1
         with:
@@ -45,55 +44,47 @@ jobs:
         uses: actions/cache@v1
         id: cache-google-cloud-sdk
         with:
-          path: ~\AppData\Local\Temp\google-cloud-sdk
+          path: ${{ env.GCLOUD_PATH }}
           key: ${{ runner.os }}-gcloud-sdk-${{ hashFiles('.github/workflows/*.yml') }} # uses the content of all GitHub Actions files as this is where the version number is set
       - name: Download Google Cloud SDK
         if: steps.cache-google-cloud-sdk.outputs.cache-hit != 'true'
         run: |
-          $Url = 'https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-272.0.0-windows-x86_64-bundled-python.zip'
+          $Url = 'https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-274.0.0-windows-x86_64.zip'
           $Dest = $env:TEMP
           $ZipFile = $Dest + '\' + $(Split-Path -Path $Url -Leaf)
-          Invoke-WebRequest -Uri $Url -OutFile $ZipFile
+          $wc = New-Object net.webclient
+          $wc.Downloadfile($Url, $ZipFile)
 
           $ExtractShell = New-Object -ComObject Shell.Application
           $Files = $ExtractShell.Namespace($ZipFile).Items()
           $ExtractShell.NameSpace($Dest).CopyHere($Files)
-        shell: powershell
       - name: Install Google Cloud SDK
         if: steps.cache-google-cloud-sdk.outputs.cache-hit != 'true'
         run: |
-          &$($env:TEMP + "\google-cloud-sdk\install.bat") --quiet --additional-components beta pubsub-emulator cloud-firestore-emulator
-        shell: powershell
+          &$($env:GCLOUD_PATH + "\install.bat") --quiet --additional-components beta pubsub-emulator cloud-firestore-emulator
       - name: Update Google Cloud SDK to latest
-        if: steps.cache-google-cloud-sdk.outputs.cache-hit != 'true'
         run: |
-          refreshenv
-          C:\Users\RUNNER~1\AppData\Local\Temp\google-cloud-sdk\bin\gcloud components update
-          C:\Users\RUNNER~1\AppData\Local\Temp\google-cloud-sdk\bin\gcloud info
+          ${{ env.GCLOUD_BIN }} components update
         shell: cmd
       - name: Start GCP Pub/Sub Emulator
         run: |
-          Start-Process -FilePath $($env:TEMP + "\google-cloud-sdk\bin\gcloud") -ArgumentList "beta emulators pubsub start --project=print-client-123456 --host-port=127.0.0.1:8538"
-        shell: powershell
+          $PUBSUB_EMULATOR_HOST = "127.0.0.1:8538"
+          $app = Start-Process -FilePath $($env:GCLOUD_BIN) -PassThru -ArgumentList "beta emulators pubsub start --project=$($env:GCP_PROJECT) --host-port=$($PUBSUB_EMULATOR_HOST)"
+          echo "::set-env name=PUBSUB_EMULATOR_PID::$($app.Id)"
+          echo "::set-env name=PUBSUB_EMULATOR_HOST::$($PUBSUB_EMULATOR_HOST)"
       - name: Start GCP Cloud Firestore Emulator
         run: |
-          Start-Process -FilePath $($env:TEMP + "\google-cloud-sdk\bin\gcloud") -ArgumentList "beta emulators firestore start --project=print-client-123456 --host-port=127.0.0.1:8539"
-        shell: powershell
+          $FIRESTORE_EMULATOR_HOST = "127.0.0.1:8539"
+          $app = Start-Process -FilePath $($env:GCLOUD_BIN) -PassThru -ArgumentList "beta emulators firestore start --project=$($env:GCP_PROJECT) --host-port=$($FIRESTORE_EMULATOR_HOST)"
+          echo "::set-env name=FIRESTORE_EMULATOR_PID::$($app.Id)"
+          echo "::set-env name=FIRESTORE_EMULATOR_HOST::$($FIRESTORE_EMULATOR_HOST)"
       - name: Run integration tests
-        env:
-          PUBSUB_EMULATOR_HOST: 127.0.0.1:8538
-          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8539
-          PUBSUB_PROJECT_ID: print-client-123456
-          FIRESTORE_PROJECT_ID: print-client-123456
-          GCP_PROJECT: print-client-123456
         run: |
-          pytest -s -o log_cli=True -W ignore::DeprecationWarning test_integration.py
+          pytest -s -o log_cli=True --log-level DEBUG test_integration.py
       - name: Run integration tests with coverage
-        env:
-          PUBSUB_EMULATOR_HOST: 127.0.0.1:8538
-          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8539
-          PUBSUB_PROJECT_ID: print-client-123456
-          FIRESTORE_PROJECT_ID: print-client-123456
-          GCP_PROJECT: print-client-123456
         run: |
-          pytest --cov=. --cov-report term-missing -W ignore::DeprecationWarning test_integration.py
+          pytest --cov=. --cov-report term-missing test_integration.py
+      - name: Stop emulators
+        continue-on-error: true
+        run: |
+          Stop-Process -Id $env:PUBSUB_EMULATOR_PID,$env:FIRESTORE_EMULATOR_PID
