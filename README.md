@@ -10,7 +10,7 @@ It assumes a specific message structure:
     "data": BINARY_CONTENT
     "attributes": {
         "order_number": "an integer representing the number of this order",
-        "event_date": "a date specifed in ISO8601 format string of 'YYYY-MM-DD'",
+        "event_id": "any string that serves to effectively group printing requests",
         "reprint": "an optional attribute that indicates this is a reprint request"
     }
 }
