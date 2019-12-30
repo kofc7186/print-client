@@ -21,7 +21,7 @@ RUN powershell.exe -Command \
     Remove-Item $PyInstaller -Force
 
 # install google-cloud-sdk (for debugging only)
-RUN powershell.exec -Command \
+RUN powershell.exe -Command \
     Write-Host 'Downloading Google Cloud SDK...' ; \
     $Url = 'https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-274.0.0-windows-x86_64.zip' ; \
     $Dest = $env:TEMP ; \
