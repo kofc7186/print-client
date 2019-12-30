@@ -1,6 +1,6 @@
 FROM mcr.microsoft.com/windows/servercore:ltsc2019
 
-WORKDIR $env:TEMP
+# WORKDIR $env:TEMP
 
 # install ghostscript
 RUN Write-Host 'Downloading Ghostscript...' ; \
