@@ -2,6 +2,7 @@
 """Unit tests for print-client"""
 
 from argparse import Namespace
+import base64
 import os
 import platform
 import subprocess
@@ -75,7 +76,7 @@ def add_label_to_print():
     """
     def _loader(filename, publisher_client, order_number, event_id, attributes=None):
         with open(filename, "rb") as pdf:
-            pdf_data = pdf.read()
+            pdf_data = base64.b64encode(pdf.read())
 
         args = {}
         if order_number:

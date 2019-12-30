@@ -2,16 +2,16 @@
 """Unit tests for print-client"""
 
 import argparse
+import base64
 import datetime
 import os
 import platform
+import queue
 import subprocess
 import time
 
 import pytest
 import pytz
-
-from six.moves import queue
 
 from google.api_core import datetime_helpers
 from google.cloud.pubsub_v1 import types
@@ -249,6 +249,25 @@ def test_invalid_log_level():
     assert system_exit_e.value.code == 2
 
 
+def test_non_base64_data(mocker, receive_messsage_unit_test_fixture):
+    """ Tests good path for a valid message that should be sent to the printer """
+    mock_ack = mocker.patch('google.cloud.pubsub_v1.subscriber.message.Message.ack')
+    mock_nack = mocker.patch('google.cloud.pubsub_v1.subscriber.message.Message.nack')
+    mock_client = mocker.patch('google.cloud.firestore.Client')
+    mock_client.return_value.collection.return_value.where.return_value.stream.return_value = []
+    mock_print = mocker.patch('subprocess.run')
+
+    data = b'%234'  # % is not a valid character in a base64 string, so this should fail
+    attributes = {"order_number": "1234", "event_id": TEST_EVENT_ID}
+    msg = receive_messsage_unit_test_fixture(data, attributes)
+
+    main.received_message_to_print(msg)
+
+    mock_ack.assert_called_once()
+    mock_nack.assert_not_called()
+    mock_print.assert_not_called()
+
+
 def test_successful_print(mocker, receive_messsage_unit_test_fixture):
     """ Tests good path for a valid message that should be sent to the printer """
     mock_ack = mocker.patch('google.cloud.pubsub_v1.subscriber.message.Message.ack')
@@ -257,7 +276,7 @@ def test_successful_print(mocker, receive_messsage_unit_test_fixture):
     mock_client.return_value.collection.return_value.where.return_value.stream.return_value = []
     mock_print = mocker.patch('subprocess.run')
 
-    data = b'1234'
+    data = base64.b64encode(b'1234')
     attributes = {"order_number": "1234", "event_id": TEST_EVENT_ID}
     msg = receive_messsage_unit_test_fixture(data, attributes)
 
@@ -275,7 +294,7 @@ def test_successful_reprint(mocker, receive_messsage_unit_test_fixture):
     mocker.patch('google.cloud.firestore.Client')
     mock_print = mocker.patch('subprocess.run')
 
-    data = b'1234'
+    data = base64.b64encode(b'1234')
     attributes = {"order_number": "1234", "event_id": TEST_EVENT_ID, "reprint": "True"}
     msg = receive_messsage_unit_test_fixture(data, attributes)
 
@@ -296,7 +315,7 @@ def test_idempotent_impl(mocker, receive_messsage_unit_test_fixture):
     mock_client.return_value.collection.return_value.where.return_value.stream.return_value = ['1']
     mock_print = mocker.patch('subprocess.run')
 
-    data = b'1234'
+    data = base64.b64encode(b'1234')
     attributes = {"order_number": "1234", "event_id": TEST_EVENT_ID}  # reprint not specified here
     msg = receive_messsage_unit_test_fixture(data, attributes)
 
@@ -315,7 +334,7 @@ def test_no_message_attributes(mocker, receive_messsage_unit_test_fixture):
     mock_nack = mocker.patch('google.cloud.pubsub_v1.subscriber.message.Message.nack')
     mock_print = mocker.patch('subprocess.run')
 
-    data = b'1234'
+    data = base64.b64encode(b'1234')
     attributes = {}
     msg = receive_messsage_unit_test_fixture(data, attributes)
 
@@ -334,7 +353,7 @@ def test_no_even_messages_printed(mocker, receive_messsage_unit_test_fixture):
     mock_nack = mocker.patch('google.cloud.pubsub_v1.subscriber.message.Message.nack')
     mock_print = mocker.patch('subprocess.run')
 
-    data = b'1234'
+    data = base64.b64encode(b'1234')
     attributes = {"order_number": "5678", "event_id": TEST_EVENT_ID}
     msg = receive_messsage_unit_test_fixture(data, attributes)
 
@@ -354,7 +373,7 @@ def test_no_odd_messages_printed(mocker, receive_messsage_unit_test_fixture):
     mock_nack = mocker.patch('google.cloud.pubsub_v1.subscriber.message.Message.nack')
     mock_print = mocker.patch('subprocess.run')
 
-    data = b'1234'
+    data = base64.b64encode(b'1234')
     attributes = {"order_number": "5679", "event_id": TEST_EVENT_ID}
     msg = receive_messsage_unit_test_fixture(data, attributes)
 
@@ -374,7 +393,7 @@ def test_invalid_order_number(mocker, receive_messsage_unit_test_fixture):
     mock_nack = mocker.patch('google.cloud.pubsub_v1.subscriber.message.Message.nack')
     mock_print = mocker.patch('subprocess.run')
 
-    data = b'1234'
+    data = base64.b64encode(b'1234')
     attributes = {"order_number": "not_a_number", "event_id": TEST_EVENT_ID}
     msg = receive_messsage_unit_test_fixture(data, attributes)
 
@@ -393,7 +412,7 @@ def test_missing_event_id(mocker, receive_messsage_unit_test_fixture):
     mock_nack = mocker.patch('google.cloud.pubsub_v1.subscriber.message.Message.nack')
     mock_print = mocker.patch('subprocess.run')
 
-    data = b'1234'
+    data = base64.b64encode(b'1234')
     attributes = {"order_number": "1234"}
     msg = receive_messsage_unit_test_fixture(data, attributes)
 
@@ -412,7 +431,7 @@ def test_other_attributes_but_no_order_number(mocker, receive_messsage_unit_test
     mock_nack = mocker.patch('google.cloud.pubsub_v1.subscriber.message.Message.nack')
     mock_print = mocker.patch('subprocess.run')
 
-    data = b'1234'
+    data = base64.b64encode(b'1234')
     attributes = {"another_attr": "abc123", "event_id": TEST_EVENT_ID}
     msg = receive_messsage_unit_test_fixture(data, attributes)
 
@@ -435,7 +454,7 @@ def test_printer_failure(mocker, receive_messsage_unit_test_fixture):
                                       side_effect=subprocess.CalledProcessError(cmd="gswin64.exe",
                                                                                 returncode=1))
 
-    data = b'1234'
+    data = base64.b64encode(b'1234')
     attributes = {"order_number": "123", "event_id": TEST_EVENT_ID}
     msg = receive_messsage_unit_test_fixture(data, attributes)
 
@@ -472,7 +491,7 @@ def test_database_error_before_print(mocker, receive_messsage_unit_test_fixture)
     mock_client.return_value.collection.return_value.where.side_effect = RuntimeError("Error!")
     mock_print = mocker.patch('subprocess.run')
 
-    data = b'1234'
+    data = base64.b64encode(b'1234')
     attributes = {"order_number": "1234", "event_id": TEST_EVENT_ID}
     msg = receive_messsage_unit_test_fixture(data, attributes)
 
@@ -492,7 +511,7 @@ def test_database_error_before_and_after_print(mocker, receive_messsage_unit_tes
     mocker.patch('google.cloud.firestore.Client', side_effect=RuntimeError("Connection failed"))
     mock_print = mocker.patch('subprocess.run')
 
-    data = b'1234'
+    data = base64.b64encode(b'1234')
     attributes = {"order_number": "1234", "event_id": TEST_EVENT_ID}
     msg = receive_messsage_unit_test_fixture(data, attributes)
 
@@ -514,7 +533,7 @@ def test_database_error_after_print(mocker, receive_messsage_unit_test_fixture):
     mock_client.return_value.collection.return_value.add.side_effect = RuntimeError("Error!")
     mock_print = mocker.patch('subprocess.run')
 
-    data = b'1234'
+    data = base64.b64encode(b'1234')
     attributes = {"order_number": "1234", "event_id": TEST_EVENT_ID}
     msg = receive_messsage_unit_test_fixture(data, attributes)
 

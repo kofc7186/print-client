@@ -6,6 +6,7 @@ GCP_PROJECT                    -- the project ID where the pub/sub subscription 
 GOOGLE_APPLICATION_CREDENTIALS -- the path to the service account JSON credentials file
 """
 import argparse
+import base64
 import csv
 import logging
 import os
@@ -186,7 +187,7 @@ def received_message_to_print(message):
     if ARGS.number != 'all':
         if (order_number % 2 == 0 and ARGS.number != 'even') or \
            (order_number % 2 == 1 and ARGS.number != 'odd'):
-            logging.warning("Skipping print message for order number '%s' as we are only printing"
+            logging.warning("Skipping print message for order number '%s' as we are only printing "
                             "%s numbers", order_number, ARGS.number)
             return message.nack()
 
@@ -207,12 +208,17 @@ def received_message_to_print(message):
                 return message.ack()
     except Exception as exc:  # pylint: disable=broad-except
         logging.warning("Exception raised while checking to see if we've printed this label before:"
-                        ": %s", exc)
+                        " %s", exc)
 
     # if we're here, we should try printing the file
     with WinNamedTempFile() as temp_file:
         # write content
-        temp_file.write(message.data)
+        try:
+            temp_file.write(base64.b64decode(message.data))
+        except base64.binascii.Error as exc:
+            logging.error("Could not base64 decode data!")
+            message.ack()
+            return
 
         # flush file to disk
         temp_file.close()  # this does not delete file; this will happen when we exit with clause
