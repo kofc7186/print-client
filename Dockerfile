@@ -25,8 +25,8 @@ RUN powershell.exe -Command \
     Write-Host 'Downloading Google Cloud SDK...' ; \
     $Url = 'https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-274.0.0-windows-x86_64.zip' ; \
     $Dest = $env:TEMP ; \
-    $ZipFile = $Dest + '\' + $(Split-Path -Path $Url -Leaf) ; \
-    (New-Object net.webclient).Downloadfile($Url, $ZipFile) ; \
+    $ZipFile = $Dest + '\\' + $(Split-Path -Path $Url -Leaf) ; \
+    (New-Object net.webclient).DownloadFile($Url, $ZipFile) ; \
     Write-Host 'Extracting Google Cloud SDK...' ; \
     $ExtractShell = New-Object -ComObject Shell.Application ; \
     $Files = $ExtractShell.Namespace($ZipFile).Items() ; \
@@ -41,5 +41,5 @@ COPY main.py requirements.txt c:/temp/
 # pip install -r requirements
 RUN pip install -r requirements.txt
 
-# start main.py on launch
+# start main.py on launch, allowing cmd line args to be directly passed in on 'docker run' command
 ENTRYPOINT [ "python", "main.py" ]
