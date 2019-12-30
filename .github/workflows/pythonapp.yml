@@ -4,6 +4,7 @@ on:
   push:
     branches-ignore:
       - master
+      - docker*
 jobs:
   build:
     runs-on: windows-latest
@@ -45,7 +46,7 @@ jobs:
         id: cache-google-cloud-sdk
         with:
           path: ${{ env.GCLOUD_PATH }}
-          key: ${{ runner.os }}-gcloud-sdk-${{ hashFiles('.github/workflows/*.yml') }} # uses the content of all GitHub Actions files as this is where the version number is set
+          key: ${{ runner.os }}-gcloud-sdk-${{ hashFiles('.github/workflows/pythonapp.yml') }}
       - name: Download Google Cloud SDK
         if: steps.cache-google-cloud-sdk.outputs.cache-hit != 'true'
         run: |
