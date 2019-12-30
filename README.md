@@ -7,7 +7,7 @@ This program only runs on Windows and assumes Python v3.x as a minimum version.
 It assumes a specific message structure:
 ```
 {
-    "data": BINARY_CONTENT
+    "data": Base64-encoded PDF
     "attributes": {
         "order_number": "an integer representing the number of this order",
         "event_id": "any string that serves to effectively group printing requests",
