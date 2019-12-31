@@ -9,6 +9,12 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v1
+      - name: Login to Docker Hub
+        run: |
+          docker login -u $ {{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
       - name: Build Docker Container
         run: |
-          docker build -t hub.docker.io/kofc7186/print-client:latest .
+          docker build -t kofc7186/print-client:latest .
+      - name: Publish Docker Container
+        run: |
+          docker push -t kofc7186/print-client:latest
