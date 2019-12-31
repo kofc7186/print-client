@@ -25,15 +25,17 @@ RUN powershell.exe -Command \
     Write-Host 'Downloading Google Cloud SDK...' ; \
     $Url = 'https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-274.0.0-windows-x86_64.zip' ; \
     $Dest = $env:TEMP ; \
-    $ZipFile = $Dest + '\\' + $(Split-Path -Path $Url -Leaf) ; \
+    $ZipFile = $Dest + "\\" + $(Split-Path -Path $Url -Leaf) ; \
     (New-Object net.webclient).DownloadFile($Url, $ZipFile) ; \
     Write-Host 'Extracting Google Cloud SDK...' ; \
-    $ExtractShell = New-Object -ComObject Shell.Application ; \
+    $ExtractShell = (New-Object -ComObject Shell.Application) ; \
     $Files = $ExtractShell.Namespace($ZipFile).Items() ; \
     $ExtractShell.NameSpace($Dest).CopyHere($Files) ; \
     Write-Host 'Installing Google Cloud SDK...' ; \
-    Start-Process $Dest + '\google-cloud-sdk\install.bat' -ArgumentList '--quiet' -NoNewWindow -Wait ; \
-    Start-Process $Dest + '\google-cloud-sdk\bin\gcloud' -ArgumentList 'components', 'update' -NoNewWindow -Wait ;
+    $GCPInstall = $Dest + '\google-cloud-sdk\install.bat' ; \
+    Start-Process $GCPInstall -ArgumentList '--quiet' -NoNewWindow -Wait ; \
+    $GCloud = $Dest + '\google-cloud-sdk\bin\gcloud' ; \
+    Start-Process $GCloud -ArgumentList 'components', 'update' -NoNewWindow -Wait ;
 
 # copy program into container
 COPY main.py requirements.txt c:/temp/
