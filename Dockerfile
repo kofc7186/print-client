@@ -5,7 +5,7 @@ WORKDIR C:/temp/
 # install ghostscript
 RUN powershell -Command \
     Write-Host 'Downloading Ghostscript...' ; \
-    $GsInstaller = $env:Temp + '\gs950w64.exe' ; \
+    $GsInstaller = $env:Temp + '\\gs950w64.exe' ; \
     (New-Object Net.WebClient).DownloadFile('https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs950/gs950w64.exe', $GsInstaller) ; \
     Write-Host 'Installing Ghostscript...' ; \
     Start-Process $GsInstaller -ArgumentList '/S' -NoNewWindow -Wait ; \
@@ -14,10 +14,10 @@ RUN powershell -Command \
 # install python 3.7
 RUN powershell.exe -Command \
     Write-Host 'Downloading Python...' ; \
-    $PyInstaller = $env:Temp + '\python-3.7.6-amd64.exe' ; \
+    $PyInstaller = $env:Temp + '\\python-3.7.6-amd64.exe' ; \
     (New-Object Net.WebClient).DownloadFile('https://www.python.org/ftp/python/3.7.6/python-3.7.6-amd64.exe', $PyInstaller) ; \
     Write-Host 'Installing Python...' ; \
-    Start-Process $PyInstaller -ArgumentList '/quiet', 'InstallAllUsers=1', 'PrependPath=1', 'Include_test=0', 'InstallLauncherAllUsers=0' -NoNewWindow -Wait ; \
+    Start-Process $PyInstaller -ArgumentList '/quiet InstallAllUsers=1 PrependPath=1 Include_test=0 InstallLauncherAllUsers=0' -NoNewWindow -Wait ; \
     Remove-Item $PyInstaller -Force
 
 # install google-cloud-sdk (for debugging only)
@@ -32,13 +32,17 @@ RUN powershell.exe -Command \
     Expand-Archive -Path $ZipFile -DestinationPath $Dest -Force ; \
     Write-Host 'Installing Google Cloud SDK...' ; \
     $GCPInstall = $Dest + 'google-cloud-sdk\\install.bat' ; \
-    Start-Process $GCPInstall -ArgumentList '--quiet' -NoNewWindow -Wait
+    Start-Process $GCPInstall -ArgumentList '--quiet' -NoNewWindow -Wait ; \
+    Remove-Item $ZipFile -Force
 
 # copy program into container
 COPY main.py requirements.txt c:/temp/
 
 # pip install -r requirements
 RUN pip install -r requirements.txt
+
+# pip install -r requirements
+RUN python main.py -p something
 
 # start main.py on launch, allowing cmd line args to be directly passed in on 'docker run' command
 ENTRYPOINT [ "python", "main.py" ]
