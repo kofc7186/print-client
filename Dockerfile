@@ -17,7 +17,7 @@ RUN powershell.exe -Command \
     $PyInstaller = $env:Temp + '\\python-3.7.6-amd64.exe' ; \
     (New-Object Net.WebClient).DownloadFile('https://www.python.org/ftp/python/3.7.6/python-3.7.6-amd64.exe', $PyInstaller) ; \
     Write-Host 'Installing Python...' ; \
-    Start-Process $PyInstaller -ArgumentList '/quiet InstallAllUsers=1 PrependPath=1 Include_test=0 InstallLauncherAllUsers=0' -NoNewWindow -Wait ; \
+    Start-Process $PyInstaller -ArgumentList '/quiet TargetDir=C:\Python InstallAllUsers=1 PrependPath=1 Include_test=0 InstallLauncherAllUsers=0' -NoNewWindow -Wait ; \
     Remove-Item $PyInstaller -Force
 
 # install google-cloud-sdk (for debugging only)
@@ -42,6 +42,7 @@ COPY main.py requirements.txt c:/temp/
 RUN pip install --no-cache-dir -r requirements.txt
 
 # pip install -r requirements
+ENV GCP_PROJECT=print-client-123456
 RUN python main.py -p something
 
 # start main.py on launch, allowing cmd line args to be directly passed in on 'docker run' command
