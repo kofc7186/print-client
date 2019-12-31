@@ -17,4 +17,4 @@ jobs:
           docker build -t kofc7186/print-client:${{ github.sha }} .
       - name: Publish Docker Container
         run: |
-          docker push -t kofc7186/print-client:${{ github.sha }}
+          docker push kofc7186/print-client:${{ github.sha }}
