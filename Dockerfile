@@ -32,9 +32,7 @@ RUN powershell.exe -Command \
     Expand-Archive -Path $ZipFile -DestinationPath $Dest -Force ; \
     Write-Host 'Installing Google Cloud SDK...' ; \
     $GCPInstall = $Dest + 'google-cloud-sdk\\install.bat' ; \
-    Start-Process $GCPInstall -ArgumentList '--quiet' -NoNewWindow -Wait ; \
-    $GCloud = $Dest + 'google-cloud-sdk\\bin\\gcloud.exe' ; \
-    Start-Process $GCloud -ArgumentList 'components', 'update' -NoNewWindow -Wait ;
+    Start-Process $GCPInstall -ArgumentList '--quiet' -NoNewWindow -Wait
 
 # copy program into container
 COPY main.py requirements.txt c:/temp/
