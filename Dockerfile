@@ -25,7 +25,7 @@ RUN powershell.exe -Command \
     Write-Host 'Downloading Google Cloud SDK...' ; \
     $Url = 'https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-274.0.0-windows-x86_64.zip' ; \
     $Dest = $env:TEMP ; \
-    $ZipFile = $Dest + "\\" + $(Split-Path -Path $Url -Leaf) ; \
+    $ZipFile = $Dest + '\\' + $(Split-Path -Path $Url -Leaf) ; \
     (New-Object net.webclient).DownloadFile($Url, $ZipFile) ; \
     Write-Host 'Extracting Google Cloud SDK...' ; \
     $ExtractShell = (New-Object -ComObject Shell.Application) ; \
