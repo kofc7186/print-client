@@ -23,14 +23,14 @@ RUN powershell.exe -Command \
 # install google-cloud-sdk (for debugging only)
 RUN powershell.exe -Command \
     Write-Host 'Downloading Google Cloud SDK...' ; \
-    $Url = 'https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-274.0.0-windows-x86_64.zip' ; \
+    $Url = 'https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-274.0.1-windows-x86_64.zip' ; \
     $Dest = $env:TEMP + '\\'; \
     $ZipFile = $Dest + $(Split-Path -Path $Url -Leaf) ; \
     (New-Object net.webclient).DownloadFile($Url, $ZipFile) ; \
     Write-Host 'Extracting Google Cloud SDK...' ; \
     $ProgressPreference = 'SilentlyContinue' ; \
     Expand-Archive -Path $ZipFile -DestinationPath $Dest -Force ; \
-    Write-Host 'Installing Google Cloud SDK... PATH=' + $env:PATH ; \
+    Write-Host 'Installing Google Cloud SDK...' ; \
     $GCPInstall = $Dest + 'google-cloud-sdk\\install.bat' ; \
     Start-Process $GCPInstall -ArgumentList '--quiet' -NoNewWindow -Wait ; \
     Remove-Item $ZipFile -Force
