@@ -30,7 +30,7 @@ RUN powershell.exe -Command \
     Write-Host 'Extracting Google Cloud SDK...' ; \
     $ProgressPreference = 'SilentlyContinue' ; \
     Expand-Archive -Path $ZipFile -DestinationPath $Dest -Force ; \
-    Write-Host 'Installing Google Cloud SDK...' ; \
+    Write-Host 'Installing Google Cloud SDK... PATH=' + $env:PATH ; \
     $GCPInstall = $Dest + 'google-cloud-sdk\\install.bat' ; \
     Start-Process $GCPInstall -ArgumentList '--quiet' -NoNewWindow -Wait ; \
     Remove-Item $ZipFile -Force
@@ -38,8 +38,8 @@ RUN powershell.exe -Command \
 # copy program into container
 COPY main.py requirements.txt c:/temp/
 
-# pip install -r requirements
-RUN pip install -r requirements.txt
+# Install python requirements
+RUN pip install --no-cache-dir -r requirements.txt
 
 # pip install -r requirements
 RUN python main.py -p something
