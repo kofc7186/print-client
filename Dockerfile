@@ -24,16 +24,16 @@ RUN powershell.exe -Command \
 RUN powershell.exe -Command \
     Write-Host 'Downloading Google Cloud SDK...' ; \
     $Url = 'https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-274.0.0-windows-x86_64.zip' ; \
-    $Dest = $env:TEMP ; \
-    $ZipFile = $Dest + '\\' + $(Split-Path -Path $Url -Leaf) ; \
+    $Dest = $env:TEMP + '\\'; \
+    $ZipFile = $Dest + $(Split-Path -Path $Url -Leaf) ; \
     (New-Object net.webclient).DownloadFile($Url, $ZipFile) ; \
     Write-Host 'Extracting Google Cloud SDK...' ; \
     $ProgressPreference = 'SilentlyContinue' ; \
     Expand-Archive -Path $ZipFile -DestinationPath $Dest -Force ; \
     Write-Host 'Installing Google Cloud SDK...' ; \
-    $GCPInstall = $Dest + '\google-cloud-sdk\install.bat' ; \
+    $GCPInstall = $Dest + 'google-cloud-sdk\\install.bat' ; \
     Start-Process $GCPInstall -ArgumentList '--quiet' -NoNewWindow -Wait ; \
-    $GCloud = $Dest + '\google-cloud-sdk\bin\gcloud' ; \
+    $GCloud = $Dest + 'google-cloud-sdk\\bin\\gcloud.exe' ; \
     Start-Process $GCloud -ArgumentList 'components', 'update' -NoNewWindow -Wait ;
 
 # copy program into container
