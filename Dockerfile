@@ -28,9 +28,8 @@ RUN powershell.exe -Command \
     $ZipFile = $Dest + '\\' + $(Split-Path -Path $Url -Leaf) ; \
     (New-Object net.webclient).DownloadFile($Url, $ZipFile) ; \
     Write-Host 'Extracting Google Cloud SDK...' ; \
-    $ExtractShell = (New-Object -ComObject Shell.Application) ; \
-    $Files = $ExtractShell.Namespace($ZipFile).Items() ; \
-    $ExtractShell.NameSpace($Dest).CopyHere($Files) ; \
+    $ProgressPreference = 'SilentlyContinue' ; \
+    Expand-Archive -Path $ZipFile -DestinationPath $Dest -Force ; \
     Write-Host 'Installing Google Cloud SDK...' ; \
     $GCPInstall = $Dest + '\google-cloud-sdk\install.bat' ; \
     Start-Process $GCPInstall -ArgumentList '--quiet' -NoNewWindow -Wait ; \
