@@ -25,17 +25,17 @@ TEST_EVENT_ID = 'test_integration'
 
 WMIC_OUTPUT_ONE_DEFAULT = """
 
-Default,Name
-FALSE,Fax
-TRUE,Dymo LabelMaker 450 Turbo
-FALSE,Microsoft Print to PDF
+Node,Default,Name
+ADMIN-PC,FALSE,Fax
+ADMIN-PC,TRUE,Dymo LabelMaker 450 Turbo
+ADMIN-PC,FALSE,Microsoft Print to PDF
 """
 WMIC_OUTPUT_NO_DEFAULT = """
 
-Default,Name
-FALSE,Fax
-FALSE,Dymo LabelMaker 450 Turbo
-FALSE,Microsoft Print to PDF
+Node,Default,Name
+ADMIN-PC,FALSE,Fax
+ADMIN-PC,FALSE,Dymo LabelMaker 450 Turbo
+ADMIN-PC,FALSE,Microsoft Print to PDF
 """
 WMIC_OUTPUT_NO_PRINTERS = """
 

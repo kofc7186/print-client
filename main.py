@@ -36,7 +36,9 @@ class Printers():
             # Put any initialization here.
             cls._instance.printers = []
             cls._instance.default_printer = None
-            printer_list_csv = subprocess.check_output("wmic printer get name,default /format:csv")
+            # pylint: disable=unexpected-keyword-arg
+            printer_list_csv = subprocess.check_output("wmic printer get name,default /format:csv",
+                                                       text=True)
 
             reader = csv.DictReader(printer_list_csv.strip().splitlines(), delimiter=",")
             for row in reader:
@@ -226,10 +228,14 @@ def received_message_to_print(message):
         try:
             logging.info("Printing label for order number #%s to printer '%s'...", order_number,
                          ARGS.printer)
-            print_cmd = "c:\\\\Program Files\\gs\\gs9.50\\bin\\gswin64.exe " + \
-                        "-dPrinted -dBATCH -dNOPAUSE -DNOSAFER -q -dNumCopies=1 -dPDFFitPage " \
-                        "-sDEVICE=mswinpr2 -dNoCancel -sOutputFile=\"%printer%{}\" {}"
-            subprocess.run(print_cmd.format(ARGS.printer, temp_file.name).split(), check=True)
+            # we need spaces around the executable given the space in 'Program Files', and as it is
+            # a possibility that the printer name and path to temp_file would have spaces in them as
+            # well, we wrap them in quotes too
+            print_cmd = '"c:\\\\Program Files\\gs\\gs9.50\\bin\\gswin64c.exe" -dPrinted -dBATCH ' \
+                        '-dNOPAUSE -dNOSAFER -q -dNumCopies=1 -dPDFFitPage -sDEVICE=mswinpr2 ' \
+                        '-dNoCancel ' \
+                        '-sOutputFile="%printer%{}" "{}"'.format(ARGS.printer, temp_file.name)
+            subprocess.run(print_cmd, shell=True, check=True)
         except subprocess.CalledProcessError as ex:
             logging.error("Unexpected printing error: %s", str(ex))
             # we failed to print, we nack() to retry
