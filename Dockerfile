@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/windows/nanoserver:1809
+FROM mcr.microsoft.com/powershell:nanoserver-1809
 
 WORKDIR C:/temp/
 
