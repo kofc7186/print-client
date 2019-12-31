@@ -14,7 +14,7 @@ jobs:
           docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
       - name: Build Docker Container
         run: |
-          docker build -t kofc7186/print-client:latest .
+          docker build -t kofc7186/print-client:${{ env.GITHUB_SHA }} .
       - name: Publish Docker Container
         run: |
-          docker push -t kofc7186/print-client:latest
+          docker push -t kofc7186/print-client:${{ env.GITHUB_SHA }}
