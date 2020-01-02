@@ -14,6 +14,7 @@ jobs:
           echo ${{ secrets.DOCKERHUB_PASSWORD }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
       - name: Build Docker Container
         run: |
+          docker system prune -a
           docker build -t kofc7186/print-client:${{ github.sha }} -t kofc7186/print-client:latest .
       - name: Publish Docker Container
         run: |

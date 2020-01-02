@@ -1,18 +1,18 @@
-FROM mcr.microsoft.com/windows/servercore:ltsc2019
+FROM mcr.microsoft.com/windows:1809
 
 SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop';"]
 
 WORKDIR C:/temp/
 
 # install print spooler into image
-RUN $ProgressPreference = 'SilentlyContinue' ; \
-    $folders = Get-ChildItem -Path C:\Windows\WinSxS -Directory | Where-Object {($_.Name -like "*print*") -or ($_.Name -like "*_microsoft-windows-p..*") -or ($_.Name -like "*_microsoft-windows-c..*")} \
-    foreach ($folder in $folders) { \
-        Copy-Item -Path $folder.fullname -Destination .\redist -Recurse \
-    } \
-    dism /online /Enable-Feature /FeatureName:Printing-Server-Role /All /NoRestart /Source:C:\redist\sxs; \
-    Set-Service spooler -StartupType Automatic ; \
-    Start-Service spooler
+# RUN $ProgressPreference = 'SilentlyContinue' ; \
+#     $folders = Get-ChildItem -Path C:\Windows\WinSxS -Directory | Where-Object {($_.Name -like "*print*") -or ($_.Name -like "*_microsoft-windows-p..*") -or ($_.Name -like "*_microsoft-windows-c..*")} \
+#     foreach ($folder in $folders) { \
+#         Copy-Item -Path $folder.fullname -Destination .\redist -Recurse \
+#     } \
+#     dism /online /Enable-Feature /FeatureName:Printing-Server-Role /All /NoRestart /Source:C:\redist\sxs; \
+#     Set-Service spooler -StartupType Automatic ; \
+#     Start-Service spooler
 
 # install ghostscript
 RUN Write-Host 'Downloading Ghostscript...' ; \
