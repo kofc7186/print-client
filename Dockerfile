@@ -1,6 +1,13 @@
-FROM mcr.microsoft.com/windows:1809
+FROM mcr.microsoft.com/windows/servercore:ltsc2019
 
 WORKDIR C:/temp/
+
+# install print spooler into image
+RUN powershell -Command \
+    $ProgressPreference = 'SilentlyContinue' ; \
+    Install-WindowsFeature Print-Server ; \
+    Set-Service spooler -StartupType Automatic ; \
+    Start-Service spooler
 
 # install ghostscript
 RUN powershell -Command \

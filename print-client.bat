@@ -6,8 +6,8 @@ REM Fail if creds.json does not exist in CWD
 IF NOT EXIST "creds.json" ECHO creds.json must exist in %CWD% and have the service account credentials to connect to the GCP account! && exit /b 1
 REM test for docker in path
 REM ensure print spooler is not running on host (needs to run within container)
-powershell -cmd Stop-Service spooler
-powershell -cmd Set-Service spooler -StartupType Disabled
+powershell -Command Stop-Service spooler
+powershell -Command Set-Service spooler -StartupType Disabled
 REM docker pull latest image
 docker pull kofc7186/print-client:latest
 REM stop image if running
