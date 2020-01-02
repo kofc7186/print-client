@@ -15,7 +15,7 @@ jobs:
       - name: Build Docker Container
         run: |
           wmic logicaldisk get size,freespace,caption
-          docker system purge -f -a --volumes
+          docker system prune -f -a --volumes
           wmic logicaldisk get size,freespace,caption
           docker build -t kofc7186/print-client:${{ github.sha }} -t kofc7186/print-client:latest .
       - name: Publish Docker Container
