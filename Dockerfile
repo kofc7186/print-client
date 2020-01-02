@@ -48,7 +48,7 @@ RUN Write-Host 'Downloading Google Cloud SDK...' ; \
 COPY main.py requirements.txt ./
 
 # Install python requirements
-RUN pip install --no-cache-dir -r requirements.txt && del requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Create volume for passing in GCP credentials
 VOLUME C:/data
