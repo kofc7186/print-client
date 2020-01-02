@@ -1,17 +1,21 @@
 FROM mcr.microsoft.com/windows/servercore:ltsc2019
 
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop';"]
+
 WORKDIR C:/temp/
 
 # install print spooler into image
-RUN powershell -Command \
-    $ProgressPreference = 'SilentlyContinue' ; \
-    Install-WindowsFeature Print-Server ; \
+RUN $ProgressPreference = 'SilentlyContinue' ; \
+    $folders = Get-ChildItem -Path C:\Windows\WinSxS -Directory | Where-Object {($_.Name -like "*print*") -or ($_.Name -like "*_microsoft-windows-p..*") -or ($_.Name -like "*_microsoft-windows-c..*")} \
+    foreach ($folder in $folders) { \
+        Copy-Item -Path $folder.fullname -Destination .\redist -Recurse \
+    } \
+    dism /online /Enable-Feature /FeatureName:Printing-Server-Role /All /NoRestart /Source:C:\redist\sxs; \
     Set-Service spooler -StartupType Automatic ; \
     Start-Service spooler
 
 # install ghostscript
-RUN powershell -Command \
-    Write-Host 'Downloading Ghostscript...' ; \
+RUN Write-Host 'Downloading Ghostscript...' ; \
     $GsInstaller = $env:Temp + '/gs950w64.exe' ; \
     (New-Object Net.WebClient).DownloadFile('https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs950/gs950w64.exe', $GsInstaller) ; \
     Write-Host 'Installing Ghostscript...' ; \
@@ -19,8 +23,7 @@ RUN powershell -Command \
     Remove-Item $GsInstaller -Force
 
 # install python 3.7
-RUN powershell.exe -Command \
-    Write-Host 'Downloading Python...' ; \
+RUN Write-Host 'Downloading Python...' ; \
     $PyInstaller = $env:Temp + '/python-3.7.6-amd64.exe' ; \
     (New-Object Net.WebClient).DownloadFile('https://www.python.org/ftp/python/3.7.6/python-3.7.6-amd64.exe', $PyInstaller) ; \
     Write-Host 'Installing Python...' ; \
@@ -28,8 +31,7 @@ RUN powershell.exe -Command \
     Remove-Item $PyInstaller -Force
 
 # install google-cloud-sdk (for debugging only)
-RUN powershell.exe -Command \
-    Write-Host 'Downloading Google Cloud SDK...' ; \
+RUN Write-Host 'Downloading Google Cloud SDK...' ; \
     $Url = 'https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-274.0.0-windows-x86_64.zip' ; \
     $Dest = $env:TEMP + '/'; \
     $ZipFile = $Dest + $(Split-Path -Path $Url -Leaf) ; \
