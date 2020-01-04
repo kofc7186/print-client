@@ -10,4 +10,4 @@ REM stop image if running
 cmd /C docker stop print-client-container
 cmd /C docker rm print-client-container
 REM run image, passing in cmd line args from this script
-docker run --name=print-client-container -v .:C:\data\ --restart on-failure -e GCP_PROJECT='%GCP_PROJECT%' -e GOOGLE_APPLICATION_CREDENTIALS='C:/data/creds.json' kofc7186/print-client:latest %*
+docker run --name=print-client-container -v %CD%\:C:\data\ --restart on-failure -e GCP_PROJECT='%GCP_PROJECT%' -e GOOGLE_APPLICATION_CREDENTIALS='C:\data\creds.json' kofc7186/print-client:latest %*
