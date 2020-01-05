@@ -13,10 +13,12 @@ import time
 import pytest
 import pytz
 
+from google.auth import credentials
 from google.api_core import datetime_helpers
 from google.cloud.pubsub_v1 import types
 from google.cloud.pubsub_v1.subscriber import message
 from google.protobuf.timestamp_pb2 import Timestamp
+from unittest import mock
 
 import main
 
@@ -53,7 +55,7 @@ def delete_printer_singleton(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def default_mocker_patches(request, mocker):
+def default_mocker_patches(request, mocker, monkeypatch):
     """ Common mocks across most of the unit tests in this file; will not be applied if the custom
         pytest mark named 'noprintermark' is denoted on the test case
 
@@ -61,6 +63,10 @@ def default_mocker_patches(request, mocker):
         also sets the default order numbers to be processed as 'all'
     """
     mocker.patch.object(platform, 'system', return_value="Windows")
+    mocker.patch('google.cloud.logging.Client')
+    monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", "path.json")
+    mocker.patch('google.auth.default', return_value=(mock.Mock(spec=credentials.Credentials),
+                                                      "print-client-123456"))
     if 'noprintermock' not in request.keywords:
         mock_printers = mocker.patch.object(main.Printers, "_instance")
         mock_printers.default_printer = "default_printer"
@@ -109,13 +115,15 @@ def test_runs_only_on_windows(system, mocker):
     assert str(exc.value) == "This program only runs on Windows!"
 
 
-def test_gcp_project_envvar(monkeypatch):
-    """ tests that program will not run without GCP_PROJECT environment variable being set"""
+def test_gac_envvar(monkeypatch):
+    """ tests that program will not run without GOOGLE_APPLICATION_CREDENTIALS environment variable
+        being set
+    """
     # clear environment
-    monkeypatch.delenv("GCP_PROJECT", raising=False)
+    monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
     with pytest.raises(RuntimeError) as exc:
         main.main([])
-    assert str(exc.value) == "GCP_PROJECT environment variable not set"
+    assert str(exc.value) == "GOOGLE_APPLICATION_CREDENTIALS environment variable not set"
 
 
 def test_winnamedtempfile_notdeletedwithinwithscope():
@@ -472,13 +480,13 @@ def test_missing_subscription(mocker):
     """
     mock_sc = mocker.patch('google.cloud.pubsub_v1.SubscriberClient')
     mock_sc.return_value.subscription_path.return_value = "projects/%s/subscriptions/%s" % \
-                                                          (os.environ["GCP_PROJECT"], "print_queue")
+                                                          ("print-client-123456", "print_queue")
     mock_sc.return_value.list_subscriptions.return_value = []
 
     with pytest.raises(Exception) as exc:
         main.main([])
-    assert str(exc.value) == "Subscription projects/%s/subscriptions/print_queue does not exist" % \
-                             (os.environ["GCP_PROJECT"])
+    assert str(exc.value) == "Subscription projects/print-client-123456/subscriptions/print_queue "\
+                             "does not exist"
 
 
 def test_database_error_before_print(mocker, receive_messsage_unit_test_fixture):

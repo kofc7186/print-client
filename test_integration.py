@@ -17,17 +17,19 @@ import pytest
 
 import main
 
-TEST_EVENT_ID = 'test_integration'
-
 
 @pytest.fixture(autouse=True)
-def default_mocker_patches(mocker):
+def default_mocker_patches(mocker, monkeypatch):
     """ Common mocks across all of the integration tests in this file
 
         - ensure that the program exits after 2 seconds
         - ensure that default values are passed in for printers
     """
     mocker.patch.object(platform, "system", return_value="Windows")
+
+    mocker.patch('google.cloud.logging.Client')
+    monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", "some.json")
+    mocker.patch('google.auth.default', return_value=(mock.Mock(spec=credentials.Credentials), "print-client-123456"))
     mocker.patch('main.block', side_effect=lambda: bool(time.sleep(2)))
     mock_printers = mocker.patch.object(main.Printers, "_instance")
     mock_printers.default_printer = "default_printer"
@@ -35,8 +37,10 @@ def default_mocker_patches(mocker):
     mocker.patch.object(main, "ARGS", Namespace(printer="default_printer", number="all"))
 
 
-TOPIC_PATH = "projects/%s/topics/%s" % (os.environ["GCP_PROJECT"], "print_queue")
-SUBSCRIPTION_PATH = "projects/%s/subscriptions/%s" % (os.environ["GCP_PROJECT"], "print_queue")
+TEST_EVENT_ID = 'test_integration'
+GCP_PROJECT = "print-client-123456"
+TOPIC_PATH = "projects/%s/topics/%s" % (GCP_PROJECT, "print_queue")
+SUBSCRIPTION_PATH = "projects/%s/subscriptions/%s" % (GCP_PROJECT, "print_queue")
 
 
 @pytest.fixture
@@ -49,13 +53,13 @@ def publisher_client():
     """
     # pylint: disable=no-member
     publisher_client = pubsub_v1.PublisherClient()
-    topics = publisher_client.list_topics("projects/%s" % os.environ["GCP_PROJECT"])
+    topics = publisher_client.list_topics("projects/%s" % GCP_PROJECT)
     if TOPIC_PATH not in [x.name for x in topics]:
         publisher_client.create_topic(TOPIC_PATH)
 
     # must create subscription before message is sent
     subscriber_client = pubsub_v1.SubscriberClient()
-    subscriptions = subscriber_client.list_subscriptions("projects/%s" % os.environ["GCP_PROJECT"])
+    subscriptions = subscriber_client.list_subscriptions("projects/%s" % GCP_PROJECT)
     if SUBSCRIPTION_PATH not in [x.name for x in subscriptions]:
         subscriber_client.create_subscription(SUBSCRIPTION_PATH, TOPIC_PATH,
                                               retain_acked_messages=True)
@@ -96,8 +100,7 @@ def gen_mock_firestore_client(*_args, **_kwargs):
     """ creates the correct firestore emulator client to use in tests; also deletes all relevant
         documents before each test case is run
     """
-    client = firestore.Client(project=os.environ['GCP_PROJECT'],
-                              credentials=mock.Mock(spec=credentials.Credentials))
+    client = firestore.Client()
 
     # we need to iterate through the relevant collection and delete all documents
     docs = client.collection(u'print_queue').document(TEST_EVENT_ID).collection(u'orders').stream()

@@ -1,0 +1,22 @@
+name: Set Database Rules
+
+on:
+  push:
+    branches:
+      - master
+jobs:
+  rules:
+    needs: build_docker
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+      - name: Install dependencies
+        run: |
+          pip install --no-cache-dir -r requirements.txt
+      - name: Update database rules
+        run: |
+          python db_rules.py
