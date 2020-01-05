@@ -5,7 +5,7 @@ on:
     branches-ignore:
       - master
 jobs:
-  build:
+  build_src:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v1
@@ -15,7 +15,6 @@ jobs:
           python-version: 3.7
       - name: Install dependencies
         run: |
-          python -m pip install -q --upgrade pip
           pip install -r requirements.txt
           echo "::set-env name=CLOUDSDK_PYTHON::${{ env.pythonLocation }}\python.exe"
           echo "::set-env name=GCP_PROJECT::print-client-123456"
@@ -30,7 +29,7 @@ jobs:
           flake8 . --count --exit-zero --max-complexity=15 --max-line-length=127 --statistics
       - name: Run unit tests
         run: |
-          pytest -s -o log_cli=True test_unit.py
+          pytest -o log_cli=True test_unit.py
       - name: Run unit tests with coverage
         run: |
           pytest --cov=. --cov-report term-missing test_unit.py
@@ -45,7 +44,7 @@ jobs:
         id: cache-google-cloud-sdk
         with:
           path: ${{ env.GCLOUD_PATH }}
-          key: ${{ runner.os }}-gcloud-sdk-${{ hashFiles('.github/workflows/*.yml') }} # uses the content of all GitHub Actions files as this is where the version number is set
+          key: ${{ runner.os }}-gcloud-sdk-${{ hashFiles('.github/workflows/pythonapp.yml') }}
       - name: Download Google Cloud SDK
         if: steps.cache-google-cloud-sdk.outputs.cache-hit != 'true'
         run: |
@@ -62,10 +61,6 @@ jobs:
         if: steps.cache-google-cloud-sdk.outputs.cache-hit != 'true'
         run: |
           &$($env:GCLOUD_PATH + "\install.bat") --quiet --additional-components beta pubsub-emulator cloud-firestore-emulator
-      - name: Update Google Cloud SDK to latest
-        run: |
-          ${{ env.GCLOUD_BIN }} components update
-        shell: cmd
       - name: Start GCP Pub/Sub Emulator
         run: |
           $PUBSUB_EMULATOR_HOST = "127.0.0.1:8538"
@@ -80,7 +75,7 @@ jobs:
           echo "::set-env name=FIRESTORE_EMULATOR_HOST::$($FIRESTORE_EMULATOR_HOST)"
       - name: Run integration tests
         run: |
-          pytest -s -o log_cli=True --log-level DEBUG test_integration.py
+          pytest -o log_cli=True --log-level DEBUG test_integration.py
       - name: Run integration tests with coverage
         run: |
           pytest --cov=. --cov-report term-missing test_integration.py

@@ -1,0 +1,22 @@
+name: Build Docker Container
+
+on:
+  push:
+    branches:
+      - master
+jobs:
+  build_docker:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Login to Docker Hub
+        run: |
+          echo ${{ secrets.DOCKERHUB_PASSWORD }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+      - name: Build Docker Container
+        run: |
+          docker system prune -f -a --volumes
+          docker build -t kofc7186/print-client:${{ github.sha }} -t kofc7186/print-client:latest .
+      - name: Publish Docker Container
+        run: |
+          docker push kofc7186/print-client:${{ github.sha }}
+          docker push kofc7186/print-client:latest

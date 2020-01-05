@@ -2,7 +2,6 @@
 """Listens to a Google Pub/Sub Subscription and prints received documents.
 
 This program only runs on Windows and assumes the following environment variables are set:
-GCP_PROJECT                    -- the project ID where the pub/sub subscription exists
 GOOGLE_APPLICATION_CREDENTIALS -- the path to the service account JSON credentials file
 """
 import argparse
@@ -16,11 +15,10 @@ import sys
 import tempfile
 import time
 
+from google import auth
 from google.cloud import firestore, pubsub_v1  # pylint: disable=no-name-in-module
+from google.cloud import logging as stackdriver_logging
 
-
-# squelch google cloud logging
-logging.getLogger('google.cloud').addHandler(logging.NullHandler())
 
 ARGS = None
 
@@ -80,20 +78,33 @@ def main(args):
 
     assert ('Windows' in platform.system()), "This program only runs on Windows!"
 
-    if os.environ.get('GCP_PROJECT', None) is None:
-        raise RuntimeError("GCP_PROJECT environment variable not set")
+    if os.environ.get('GOOGLE_APPLICATION_CREDENTIALS', None) is None:
+        raise RuntimeError("GOOGLE_APPLICATION_CREDENTIALS environment variable not set")
+
+    credentials, GCP_PROJECT = auth.default()
 
     global ARGS  # pylint: disable=global-statement
     ARGS = parse_command_line_args(args)
-    logging.basicConfig(level=getattr(logging, ARGS.log, None))
+
+    log_level = getattr(logging, ARGS.log, None)
+    logging.basicConfig(level=log_level)
+
+    # log all messages at level to stdout
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.setLevel(log_level)
+    logging.getLogger().addHandler(stdout_handler)
+
+    # also log all messages at level to stackdriver
+    stackdriver_client = stackdriver_logging.Client()
+    stackdriver_client.setup_logging(log_level=log_level)
 
     subscriber = pubsub_v1.SubscriberClient()
-    subscription_path = subscriber.subscription_path(os.environ['GCP_PROJECT'], 'print_queue')
+    subscription_path = subscriber.subscription_path(GCP_PROJECT, 'print_queue')
 
-    subscriptions = subscriber.list_subscriptions("projects/%s" % os.environ["GCP_PROJECT"])
+    subscriptions = subscriber.list_subscriptions("projects/%s" % GCP_PROJECT)
     if subscription_path not in [x.name for x in subscriptions]:
-        logging.error("The subscription named 'print_queue' in this GCP Project must exist before "
-                      "this program can be run!")
+        logging.error("The subscription named 'print_queue' in GCP Project '%s' must exist before "
+                      "this program can be run!", GCP_PROJECT)
         raise RuntimeError("Subscription %s does not exist" % subscription_path)
 
     logging.info("Listening for %s messages on %s", ARGS.number, subscription_path)
@@ -164,7 +175,7 @@ def validate_message_attributes(message):
 
 def get_database_connection(event_id):
     """ returns connection to database """
-    db_ref = firestore.Client(project=os.environ.get("GCP_PROJECT"))
+    db_ref = firestore.Client()
     return db_ref.collection(u'print_queue/%s/orders' % event_id)
 
 
@@ -218,7 +229,7 @@ def received_message_to_print(message):
         try:
             temp_file.write(base64.b64decode(message.data))
         except base64.binascii.Error as exc:
-            logging.error("Could not base64 decode data!")
+            logging.error("Could not base64 decode data: %s", exc)
             message.ack()
             return
 
