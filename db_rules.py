@@ -14,6 +14,7 @@ DB_RULES = {
     }
 }
 
+
 def update_db_rules():
     # Define the required scopes
     scopes = [

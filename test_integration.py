@@ -3,7 +3,6 @@
 
 from argparse import Namespace
 import base64
-import os
 import platform
 import subprocess
 import time

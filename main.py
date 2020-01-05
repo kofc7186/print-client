@@ -229,7 +229,7 @@ def received_message_to_print(message):
         try:
             temp_file.write(base64.b64decode(message.data))
         except base64.binascii.Error as exc:
-            logging.error("Could not base64 decode data!")
+            logging.error("Could not base64 decode data: %s", exc)
             message.ack()
             return
 
