@@ -1,11 +1,11 @@
-name: Build Docker Container
-
 on:
   push:
     branches:
       - master
+
 jobs:
   build_docker:
+    name: Build Docker Container
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v1
@@ -20,3 +20,19 @@ jobs:
         run: |
           docker push kofc7186/print-client:${{ github.sha }}
           docker push kofc7186/print-client:latest
+  rules:
+    name: Set Database Rules
+    needs: build_docker
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+      - name: Install dependencies
+        run: |
+          pip install --no-cache-dir -r requirements.txt
+      - name: Update database rules
+        run: |
+          python db_rules.py
