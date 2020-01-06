@@ -68,7 +68,7 @@ def parse_command_line_args(args):
                         help='which order numbers to print (default is all)')
     parser.add_argument('-l', '--log',
                         choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
-                        default='DEBUG', help='log level for messages to print to console')
+                        default='INFO', help='log level for messages to print to console')
 
     return parser.parse_args(args)
 
@@ -90,9 +90,9 @@ def main(args):
     logging.basicConfig(level=log_level)
 
     # log all messages at level to stdout
-    stdout_handler = logging.StreamHandler(sys.stdout)
-    stdout_handler.setLevel(log_level)
-    logging.getLogger().addHandler(stdout_handler)
+    # stdout_handler = logging.StreamHandler(sys.stdout)
+    # stdout_handler.setLevel(log_level)
+    # logging.getLogger().addHandler(stdout_handler)
 
     # also log all messages at level to stackdriver
     stackdriver_client = stackdriver_logging.Client()

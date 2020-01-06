@@ -104,3 +104,6 @@ venv.bak/
 .mypy_cache/
 
 .vscode/
+
+# ignore all GCP creds in JSON files
+*.json

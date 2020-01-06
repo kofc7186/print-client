@@ -1,3 +1,5 @@
+name: Build Docker Container & Update Firebase DB ACL
+
 on:
   push:
     branches:
@@ -34,5 +36,7 @@ jobs:
         run: |
           pip install --no-cache-dir -r requirements.txt
       - name: Update database rules
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
         run: |
           python db_rules.py
