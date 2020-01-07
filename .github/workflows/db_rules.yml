@@ -24,7 +24,7 @@ jobs:
 #          docker push kofc7186/print-client:latest
   rules:
     name: Set Database Rules
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
       - name: Set up Python 3.7
