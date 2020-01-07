@@ -36,5 +36,5 @@ jobs:
           pip install --no-cache-dir -r requirements.txt
       - name: Update database rules
         run: |
-          base64 -d "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}" > creds.json
+          echo "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}" | base64 -d > creds.json
           GOOGLE_APPLICATION_CREDENTIALS=creds.json python db_rules.py
