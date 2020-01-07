@@ -1,4 +1,4 @@
-name: Build Docker Container & Update Firebase DB ACL
+name: Update Firebase DB ACL
 
 on:
   push:
@@ -6,25 +6,24 @@ on:
       - master
 
 jobs:
-  build_docker:
-    name: Build Docker Container
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v1
-      - name: Login to Docker Hub
-        run: |
-          echo ${{ secrets.DOCKERHUB_PASSWORD }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
-      - name: Build Docker Container
-        run: |
-          docker system prune -f -a --volumes
-          docker build -t kofc7186/print-client:${{ github.sha }} -t kofc7186/print-client:latest .
-      - name: Publish Docker Container
-        run: |
-          docker push kofc7186/print-client:${{ github.sha }}
-          docker push kofc7186/print-client:latest
+#  build_docker:
+#    name: Build Docker Container
+#    runs-on: windows-latest
+#    steps:
+#      - uses: actions/checkout@v1
+#      - name: Login to Docker Hub
+#        run: |
+#          echo ${{ secrets.DOCKERHUB_PASSWORD }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+#      - name: Build Docker Container
+#        run: |
+#          docker system prune -f -a --volumes
+#          docker build -t kofc7186/print-client:${{ github.sha }} -t kofc7186/print-client:latest .
+#      - name: Publish Docker Container
+#        run: |
+#          docker push kofc7186/print-client:${{ github.sha }}
+#          docker push kofc7186/print-client:latest
   rules:
     name: Set Database Rules
-    needs: build_docker
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v1
@@ -36,7 +35,6 @@ jobs:
         run: |
           pip install --no-cache-dir -r requirements.txt
       - name: Update database rules
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
         run: |
-          python db_rules.py
+          echo "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}" > creds.json
+          GOOGLE_APPLICATION_CREDENTIALS=creds.json python db_rules.py
