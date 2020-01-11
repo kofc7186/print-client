@@ -1,9 +1,11 @@
+""" Sets the database access rules for the firestore database for the print client"""
 import json
 import logging
 
 from google import auth
 from google.auth.transport.requests import AuthorizedSession
 
+# set the rules here according to the firestore format
 DB_RULES = {
     "rules": {
         "print_queue": {
@@ -15,7 +17,8 @@ DB_RULES = {
 }
 
 
-def update_db_rules():
+def main():
+    """ Sets the database access rules for the firestore database for the print client"""
     # Define the required scopes
     scopes = [
         "https://www.googleapis.com/auth/userinfo.email",
@@ -32,12 +35,12 @@ def update_db_rules():
     logging.debug("sending updated rules to '%s': %s", url, json.dumps(DB_RULES))
     response = authed_session.put(url, json=DB_RULES)
 
-    if (response.status_code != 200):
-        logging.error("error updating rules:(%s) %s" % (str(response.status_code), str(response.text)))
+    if response.status_code != 200:
+        logging.error("error updating rules:(%s) %s", response.status_code, response.text)
     else:
-        logging.info("rules successfully updates")
+        logging.info("rules successfully updated")
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
-    update_db_rules()
+    main()

@@ -40,6 +40,8 @@ class Printers():
 
             reader = csv.DictReader(printer_list_csv.strip().splitlines(), delimiter=",")
             for row in reader:
+                logging.debug("detected printer '%s' %s", row['Name'],
+                              "(default)" if row['Default'] == "TRUE" else "")
                 cls._instance.printers.append(row['Name'])
                 # there should only be one default so no worries about overwriting here
                 if row['Default'] == "TRUE":
@@ -53,7 +55,7 @@ def valid_printer(name):
     Arguments:
     name -- the name of the printer requested
     """
-    logging.debug("Testing printer '%s'", name)
+    logging.debug("Testing to see if printer '%s' is a valid printer", name)
     if name not in Printers().printers:  # pylint: disable=no-member
         raise argparse.ArgumentTypeError("'%s' is not a valid printer name on this system" % name)
     return name
@@ -81,7 +83,7 @@ def main(args):
     if os.environ.get('GOOGLE_APPLICATION_CREDENTIALS', None) is None:
         raise RuntimeError("GOOGLE_APPLICATION_CREDENTIALS environment variable not set")
 
-    credentials, GCP_PROJECT = auth.default()
+    credentials, gcp_project = auth.default()
 
     global ARGS  # pylint: disable=global-statement
     ARGS = parse_command_line_args(args)
@@ -99,12 +101,12 @@ def main(args):
     stackdriver_client.setup_logging(log_level=log_level)
 
     subscriber = pubsub_v1.SubscriberClient()
-    subscription_path = subscriber.subscription_path(GCP_PROJECT, 'print_queue')
+    subscription_path = subscriber.subscription_path(gcp_project, 'print_queue')
 
-    subscriptions = subscriber.list_subscriptions("projects/%s" % GCP_PROJECT)
+    subscriptions = subscriber.list_subscriptions("projects/%s" % gcp_project)
     if subscription_path not in [x.name for x in subscriptions]:
         logging.error("The subscription named 'print_queue' in GCP Project '%s' must exist before "
-                      "this program can be run!", GCP_PROJECT)
+                      "this program can be run!", gcp_project)
         raise RuntimeError("Subscription %s does not exist" % subscription_path)
 
     logging.info("Listening for %s messages on %s", ARGS.number, subscription_path)
@@ -194,8 +196,7 @@ def received_message_to_print(message):
 
     event_id = message.attributes.get("event_id")
     order_number = int(message.attributes.get("order_number"))
-    logging.debug("Received print message for event ID '%s', order number '%s'", event_id,
-                  order_number)
+    logging.debug("Received print message with attributes '%s'", message.attributes)
 
     if ARGS.number != 'all':
         if (order_number % 2 == 0 and ARGS.number != 'even') or \
@@ -263,6 +264,7 @@ def received_message_to_print(message):
                 u'order_number': order_number,
                 u'printer_name': str(ARGS.printer),
                 u'hostname': str(platform.node()),
+                u'message_attributes': dict(message.attributes),
                 u'message_id': str(message.message_id),
                 u'message_publish_time': str(message.publish_time),
                 u'print_timestamp': firestore.SERVER_TIMESTAMP,

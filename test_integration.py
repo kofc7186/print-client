@@ -28,7 +28,8 @@ def default_mocker_patches(mocker, monkeypatch):
 
     mocker.patch('google.cloud.logging.Client')
     monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", "some.json")
-    mocker.patch('google.auth.default', return_value=(mock.Mock(spec=credentials.Credentials), "print-client-123456"))
+    mocker.patch('google.auth.default', return_value=(mock.Mock(spec=credentials.Credentials),
+                                                      "print-client-123456"))
     mocker.patch('main.block', side_effect=lambda: bool(time.sleep(2)))
     mock_printers = mocker.patch.object(main.Printers, "_instance")
     mock_printers.default_printer = "default_printer"
@@ -238,6 +239,11 @@ def test_print_success(mocker, publisher_client, add_label_to_print, gen_mock_fi
     # ensure message is nacked, not acked to ensure we try to re-print this
     mock_ack.assert_called_once()
     mock_nack.assert_not_called()
+    # check firestore to see that record was put in
+    db_conn = gen_mock_firestore_client.collection(u'print_queue/%s/orders' % event_id)
+    db_results = db_conn.where(u'order_number', u'==', order_number)
+    # ensure we have a single record in the DB
+    assert len(list(db_results.stream())) == 1
 
 
 def test_reprint_label(mocker, publisher_client, add_label_to_print, gen_mock_firestore_client):
@@ -256,6 +262,11 @@ def test_reprint_label(mocker, publisher_client, add_label_to_print, gen_mock_fi
     mock_ack.assert_called_once()
     mock_print.assert_called_once()
     mock_nack.assert_not_called()
+    # check firestore to see that a record was put in
+    db_conn = gen_mock_firestore_client.collection(u'print_queue/%s/orders' % event_id)
+    db_results = db_conn.where(u'order_number', u'==', order_number)
+    # ensure we have one record in the DB
+    assert len(list(db_results.stream())) == 1
 
 
 def test_idempotent_print(mocker, publisher_client, add_label_to_print, gen_mock_firestore_client):

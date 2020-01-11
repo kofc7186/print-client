@@ -9,6 +9,7 @@ import platform
 import queue
 import subprocess
 import time
+from unittest import mock
 
 import pytest
 import pytz
@@ -18,7 +19,6 @@ from google.api_core import datetime_helpers
 from google.cloud.pubsub_v1 import types
 from google.cloud.pubsub_v1.subscriber import message
 from google.protobuf.timestamp_pb2 import Timestamp
-from unittest import mock
 
 import main
 
