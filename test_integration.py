@@ -37,7 +37,7 @@ def default_mocker_patches(mocker, monkeypatch):
     mocker.patch.object(main, "ARGS", Namespace(printer="default_printer", number="all"))
 
 
-TEST_EVENT_ID = 'test_integration'
+TEST_EVENT_DATE = '1900-01-01'
 GCP_PROJECT = "print-client-123456"
 TOPIC_PATH = "projects/%s/topics/%s" % (GCP_PROJECT, "print_queue")
 SUBSCRIPTION_PATH = "projects/%s/subscriptions/%s" % (GCP_PROJECT, "print_queue")
@@ -78,17 +78,17 @@ def add_label_to_print():
     """ Factory as fixture that publishes a message with specified order number, attributes, and
         the contents of a real PDF file to the topic on the emulator
     """
-    def _loader(filename, publisher_client, order_number, event_id, attributes=None):
+    def _loader(filename, publisher_client, order_number, event_date, attributes=None):
         with open(filename, "rb") as pdf:
             pdf_data = base64.b64encode(pdf.read())
 
         args = {}
         if order_number:
             args['order_number'] = str(order_number)
-        if event_id:
-            args['event_id'] = str(event_id)
+        if event_date:
+            args['event_date'] = str(event_date)
         if attributes:
-            # only set event_id if we were passed a non-null attribute set
+            # only set event_date if we were passed a non-null attribute set
             args.update(attributes)
         publisher_client.publish(TOPIC_PATH, data=pdf_data, **args)
 
@@ -103,7 +103,7 @@ def gen_mock_firestore_client(*_args, **_kwargs):
     client = firestore.Client()
 
     # we need to iterate through the relevant collection and delete all documents
-    docs = client.collection(u'print_queue').document(TEST_EVENT_ID).collection(u'orders').stream()
+    docs = client.collection(f'events/{TEST_EVENT_DATE}/print_queue').stream()
     for doc in docs:
         doc.reference.delete()
 
@@ -117,8 +117,8 @@ def test_no_message_attributes(mocker, publisher_client, add_label_to_print):
     mock_ack = mocker.patch('google.cloud.pubsub_v1.subscriber.message.Message.ack')
     mock_print = mocker.patch('subprocess.run')
     order_number = None
-    event_id = TEST_EVENT_ID
-    add_label_to_print("tests/test_label.pdf", publisher_client, order_number, event_id)
+    event_date = TEST_EVENT_DATE
+    add_label_to_print("tests/test_label.pdf", publisher_client, order_number, event_date)
     # use default printer and all order numbers
     main.main([])
     # ensure message is acked
@@ -135,8 +135,8 @@ def test_no_odd_messages_printed(mocker, publisher_client, add_label_to_print):
     mock_nack = mocker.patch('google.cloud.pubsub_v1.subscriber.message.Message.nack')
     mock_print = mocker.patch('subprocess.run')
     order_number = 1
-    event_id = TEST_EVENT_ID
-    add_label_to_print("tests/test_label.pdf", publisher_client, order_number, event_id)
+    event_date = TEST_EVENT_DATE
+    add_label_to_print("tests/test_label.pdf", publisher_client, order_number, event_date)
     # use default printer and only even order numbers
     main.main(["-n", "even"])
     # ensure message is nacked, not acked
@@ -154,8 +154,8 @@ def test_no_even_messages_printed(mocker, publisher_client, add_label_to_print):
     mock_nack = mocker.patch('google.cloud.pubsub_v1.subscriber.message.Message.nack')
     mock_print = mocker.patch('subprocess.run')
     order_number = 2
-    event_id = TEST_EVENT_ID
-    add_label_to_print("tests/test_label.pdf", publisher_client, order_number, event_id)
+    event_date = TEST_EVENT_DATE
+    add_label_to_print("tests/test_label.pdf", publisher_client, order_number, event_date)
     # use default printer and only odd order numbers
     main.main(["-n", "odd"])
     # ensure message is nacked, not acked
@@ -172,8 +172,8 @@ def test_invalid_order_number(mocker, publisher_client, add_label_to_print):
     mock_ack = mocker.patch('google.cloud.pubsub_v1.subscriber.message.Message.ack')
     mock_print = mocker.patch('subprocess.run')
     order_number = "not_a_number"
-    event_id = TEST_EVENT_ID
-    add_label_to_print("tests/test_label.pdf", publisher_client, order_number, event_id)
+    event_date = TEST_EVENT_DATE
+    add_label_to_print("tests/test_label.pdf", publisher_client, order_number, event_date)
     # use default printer and all order numbers
     main.main([])
     # ensure message is acked (discarded)
@@ -189,9 +189,9 @@ def test_other_attributes_but_no_order_number(mocker, publisher_client, add_labe
     mock_ack = mocker.patch('google.cloud.pubsub_v1.subscriber.message.Message.ack')
     mock_print = mocker.patch('subprocess.run')
     order_number = None
-    event_id = TEST_EVENT_ID
+    event_date = TEST_EVENT_DATE
     attributes = {"a": "1"}
-    add_label_to_print("tests/test_label.pdf", publisher_client, order_number, event_id, attributes)
+    add_label_to_print("tests/test_label.pdf", publisher_client, order_number, event_date, attributes)
     # use default printer and all order numbers
     main.main([])
     # ensure message is acked (discarded)
@@ -211,8 +211,8 @@ def test_printer_failure(mocker, publisher_client, add_label_to_print, gen_mock_
                               side_effect=subprocess.CalledProcessError(cmd="gswin64.exe",
                                                                         returncode=1))
     order_number = 1
-    event_id = TEST_EVENT_ID
-    add_label_to_print("tests/test_label.pdf", publisher_client, order_number, event_id)
+    event_date = TEST_EVENT_DATE
+    add_label_to_print("tests/test_label.pdf", publisher_client, order_number, event_date)
     # use default printer and all order numbers
     main.main([])
     # ensure print was called
@@ -230,8 +230,8 @@ def test_print_success(mocker, publisher_client, add_label_to_print, gen_mock_fi
     mock_print = mocker.patch('subprocess.run')
 
     order_number = 1
-    event_id = TEST_EVENT_ID
-    add_label_to_print("tests/test_label.pdf", publisher_client, order_number, event_id)
+    event_date = TEST_EVENT_DATE
+    add_label_to_print("tests/test_label.pdf", publisher_client, order_number, event_date)
     # use default printer and all order numbers
     main.main([])
     # ensure print was called
@@ -240,7 +240,7 @@ def test_print_success(mocker, publisher_client, add_label_to_print, gen_mock_fi
     mock_ack.assert_called_once()
     mock_nack.assert_not_called()
     # check firestore to see that record was put in
-    db_conn = gen_mock_firestore_client.collection(u'print_queue/%s/orders' % event_id)
+    db_conn = gen_mock_firestore_client.collection(f'events/{event_date}/print_queue')
     db_results = db_conn.where(u'order_number', u'==', order_number)
     # ensure we have a single record in the DB
     assert len(list(db_results.stream())) == 1
@@ -253,9 +253,9 @@ def test_reprint_label(mocker, publisher_client, add_label_to_print, gen_mock_fi
     mocker.patch('google.cloud.firestore.Client', return_value=gen_mock_firestore_client)
     mock_print = mocker.patch('subprocess.run')
     order_number = 1
-    event_id = TEST_EVENT_ID
+    event_date = TEST_EVENT_DATE
     attributes = {"reprint": "True"}
-    add_label_to_print("tests/test_label.pdf", publisher_client, order_number, event_id, attributes)
+    add_label_to_print("tests/test_label.pdf", publisher_client, order_number, event_date, attributes)
     # use default printer and all order numbers
     main.main([])
     # ensure print was called and we acked message
@@ -263,7 +263,7 @@ def test_reprint_label(mocker, publisher_client, add_label_to_print, gen_mock_fi
     mock_print.assert_called_once()
     mock_nack.assert_not_called()
     # check firestore to see that a record was put in
-    db_conn = gen_mock_firestore_client.collection(u'print_queue/%s/orders' % event_id)
+    db_conn = gen_mock_firestore_client.collection(f'events/{event_date}/print_queue')
     db_results = db_conn.where(u'order_number', u'==', order_number)
     # ensure we have one record in the DB
     assert len(list(db_results.stream())) == 1
@@ -278,8 +278,7 @@ def test_idempotent_print(mocker, publisher_client, add_label_to_print, gen_mock
 
     order_number = 1
     # put an entry into the DB denoting that the label has already been printed
-    gen_mock_firestore_client.collection(u'print_queue').document(TEST_EVENT_ID)\
-        .collection(u'orders').add({
+    gen_mock_firestore_client.collection(f'events/{TEST_EVENT_DATE}/print_queue').add({
             u'order_number': order_number,
             u'printer_name': "doesnt_matter",
             u'hostname': "localhost",
@@ -288,8 +287,8 @@ def test_idempotent_print(mocker, publisher_client, add_label_to_print, gen_mock
             u'print_timestamp': firestore.SERVER_TIMESTAMP
         })
 
-    event_id = TEST_EVENT_ID
-    add_label_to_print("tests/test_label.pdf", publisher_client, order_number, event_id)
+    event_date = TEST_EVENT_DATE
+    add_label_to_print("tests/test_label.pdf", publisher_client, order_number, event_date)
     # use default printer and all order numbers
     main.main([])
     # ensure print was not called
@@ -312,8 +311,8 @@ def test_database_error_before_print(mocker, publisher_client, add_label_to_prin
     mock_print = mocker.patch('subprocess.run')
 
     order_number = 1
-    event_id = TEST_EVENT_ID
-    add_label_to_print("tests/test_label.pdf", publisher_client, order_number, event_id)
+    event_date = TEST_EVENT_DATE
+    add_label_to_print("tests/test_label.pdf", publisher_client, order_number, event_date)
     # use default printer and all order numbers
     main.main([])
 
@@ -332,8 +331,8 @@ def test_database_error_before_and_after_print(mocker, publisher_client, add_lab
     mock_print = mocker.patch('subprocess.run')
 
     order_number = 1
-    event_id = TEST_EVENT_ID
-    add_label_to_print("tests/test_label.pdf", publisher_client, order_number, event_id)
+    event_date = TEST_EVENT_DATE
+    add_label_to_print("tests/test_label.pdf", publisher_client, order_number, event_date)
     # use default printer and all order numbers
     main.main([])
 
@@ -354,8 +353,8 @@ def test_database_error_after_print(mocker, publisher_client, add_label_to_print
     mock_print = mocker.patch('subprocess.run')
 
     order_number = 1
-    event_id = TEST_EVENT_ID
-    add_label_to_print("tests/test_label.pdf", publisher_client, order_number, event_id)
+    event_date = TEST_EVENT_DATE
+    add_label_to_print("tests/test_label.pdf", publisher_client, order_number, event_date)
     # use default printer and all order numbers
     main.main([])
 

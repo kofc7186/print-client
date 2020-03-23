@@ -22,7 +22,7 @@ from google.protobuf.timestamp_pb2 import Timestamp
 
 import main
 
-TEST_EVENT_ID = 'test_integration'
+TEST_EVENT_DATE = '1900-01-01'
 
 
 WMIC_OUTPUT_ONE_DEFAULT = """
@@ -266,7 +266,7 @@ def test_non_base64_data(mocker, receive_messsage_unit_test_fixture):
     mock_print = mocker.patch('subprocess.run')
 
     data = b'%234'  # % is not a valid character in a base64 string, so this should fail
-    attributes = {"order_number": "1234", "event_id": TEST_EVENT_ID}
+    attributes = {"order_number": "1234", "event_date": TEST_EVENT_DATE}
     msg = receive_messsage_unit_test_fixture(data, attributes)
 
     main.received_message_to_print(msg)
@@ -285,7 +285,7 @@ def test_successful_print(mocker, receive_messsage_unit_test_fixture):
     mock_print = mocker.patch('subprocess.run')
 
     data = base64.b64encode(b'1234')
-    attributes = {"order_number": "1234", "event_id": TEST_EVENT_ID}
+    attributes = {"order_number": "1234", "event_date": TEST_EVENT_DATE}
     msg = receive_messsage_unit_test_fixture(data, attributes)
 
     main.received_message_to_print(msg)
@@ -303,7 +303,7 @@ def test_successful_reprint(mocker, receive_messsage_unit_test_fixture):
     mock_print = mocker.patch('subprocess.run')
 
     data = base64.b64encode(b'1234')
-    attributes = {"order_number": "1234", "event_id": TEST_EVENT_ID, "reprint": "True"}
+    attributes = {"order_number": "1234", "event_date": TEST_EVENT_DATE, "reprint": "True"}
     msg = receive_messsage_unit_test_fixture(data, attributes)
 
     main.received_message_to_print(msg)
@@ -324,7 +324,7 @@ def test_idempotent_impl(mocker, receive_messsage_unit_test_fixture):
     mock_print = mocker.patch('subprocess.run')
 
     data = base64.b64encode(b'1234')
-    attributes = {"order_number": "1234", "event_id": TEST_EVENT_ID}  # reprint not specified here
+    attributes = {"order_number": "1234", "event_date": TEST_EVENT_DATE}  # reprint not specified here
     msg = receive_messsage_unit_test_fixture(data, attributes)
 
     main.received_message_to_print(msg)
@@ -362,7 +362,7 @@ def test_no_even_messages_printed(mocker, receive_messsage_unit_test_fixture):
     mock_print = mocker.patch('subprocess.run')
 
     data = base64.b64encode(b'1234')
-    attributes = {"order_number": "5678", "event_id": TEST_EVENT_ID}
+    attributes = {"order_number": "5678", "event_date": TEST_EVENT_DATE}
     msg = receive_messsage_unit_test_fixture(data, attributes)
 
     main.ARGS.number = "odd"
@@ -382,7 +382,7 @@ def test_no_odd_messages_printed(mocker, receive_messsage_unit_test_fixture):
     mock_print = mocker.patch('subprocess.run')
 
     data = base64.b64encode(b'1234')
-    attributes = {"order_number": "5679", "event_id": TEST_EVENT_ID}
+    attributes = {"order_number": "5679", "event_date": TEST_EVENT_DATE}
     msg = receive_messsage_unit_test_fixture(data, attributes)
 
     main.ARGS.number = "even"
@@ -402,7 +402,7 @@ def test_invalid_order_number(mocker, receive_messsage_unit_test_fixture):
     mock_print = mocker.patch('subprocess.run')
 
     data = base64.b64encode(b'1234')
-    attributes = {"order_number": "not_a_number", "event_id": TEST_EVENT_ID}
+    attributes = {"order_number": "not_a_number", "event_date": TEST_EVENT_DATE}
     msg = receive_messsage_unit_test_fixture(data, attributes)
 
     main.received_message_to_print(msg)
@@ -412,7 +412,7 @@ def test_invalid_order_number(mocker, receive_messsage_unit_test_fixture):
     mock_print.assert_not_called()
 
 
-def test_missing_event_id(mocker, receive_messsage_unit_test_fixture):
+def test_missing_event_date(mocker, receive_messsage_unit_test_fixture):
     """ Tests that a message received with a missing event ID will not be printed and
         appropriately squelched
     """
@@ -440,7 +440,7 @@ def test_other_attributes_but_no_order_number(mocker, receive_messsage_unit_test
     mock_print = mocker.patch('subprocess.run')
 
     data = base64.b64encode(b'1234')
-    attributes = {"another_attr": "abc123", "event_id": TEST_EVENT_ID}
+    attributes = {"another_attr": "abc123", "event_date": TEST_EVENT_DATE}
     msg = receive_messsage_unit_test_fixture(data, attributes)
 
     main.received_message_to_print(msg)
@@ -463,7 +463,7 @@ def test_printer_failure(mocker, receive_messsage_unit_test_fixture):
                                                                                 returncode=1))
 
     data = base64.b64encode(b'1234')
-    attributes = {"order_number": "123", "event_id": TEST_EVENT_ID}
+    attributes = {"order_number": "123", "event_date": TEST_EVENT_DATE}
     msg = receive_messsage_unit_test_fixture(data, attributes)
 
     main.received_message_to_print(msg)
@@ -500,7 +500,7 @@ def test_database_error_before_print(mocker, receive_messsage_unit_test_fixture)
     mock_print = mocker.patch('subprocess.run')
 
     data = base64.b64encode(b'1234')
-    attributes = {"order_number": "1234", "event_id": TEST_EVENT_ID}
+    attributes = {"order_number": "1234", "event_date": TEST_EVENT_DATE}
     msg = receive_messsage_unit_test_fixture(data, attributes)
 
     main.received_message_to_print(msg)
@@ -520,7 +520,7 @@ def test_database_error_before_and_after_print(mocker, receive_messsage_unit_tes
     mock_print = mocker.patch('subprocess.run')
 
     data = base64.b64encode(b'1234')
-    attributes = {"order_number": "1234", "event_id": TEST_EVENT_ID}
+    attributes = {"order_number": "1234", "event_date": TEST_EVENT_DATE}
     msg = receive_messsage_unit_test_fixture(data, attributes)
 
     main.received_message_to_print(msg)
@@ -542,7 +542,7 @@ def test_database_error_after_print(mocker, receive_messsage_unit_test_fixture):
     mock_print = mocker.patch('subprocess.run')
 
     data = base64.b64encode(b'1234')
-    attributes = {"order_number": "1234", "event_id": TEST_EVENT_ID}
+    attributes = {"order_number": "1234", "event_date": TEST_EVENT_DATE}
     msg = receive_messsage_unit_test_fixture(data, attributes)
 
     main.received_message_to_print(msg)

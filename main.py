@@ -55,9 +55,9 @@ def valid_printer(name):
     Arguments:
     name -- the name of the printer requested
     """
-    logging.debug("Testing to see if printer '%s' is a valid printer", name)
+    logging.debug(f"Testing to see if printer '{name}' is a valid printer")
     if name not in Printers().printers:  # pylint: disable=no-member
-        raise argparse.ArgumentTypeError("'%s' is not a valid printer name on this system" % name)
+        raise argparse.ArgumentTypeError(f"'{name}' is not a valid printer name on this system")
     return name
 
 
@@ -105,11 +105,11 @@ def main(args):
 
     subscriptions = subscriber.list_subscriptions("projects/%s" % gcp_project)
     if subscription_path not in [x.name for x in subscriptions]:
-        logging.error("The subscription named 'print_queue' in GCP Project '%s' must exist before "
-                      "this program can be run!", gcp_project)
+        logging.error(f"The subscription named 'print_queue' in GCP Project '{gcp_project}' "
+                      f"must exist before this program can be run!")
         raise RuntimeError("Subscription %s does not exist" % subscription_path)
 
-    logging.info("Listening for %s messages on %s", ARGS.number, subscription_path)
+    logging.info(f"Listening for {ARGS.number} messages on {subscription_path}")
 
     # there is no way to print more than one document at a time so no need to parallelize
     subscriber.subscribe(subscription_path, callback=received_message_to_print,
@@ -157,9 +157,9 @@ def validate_message_attributes(message):
         logging.warning(error_msg)
         raise ValueError(error_msg)
 
-    if message.attributes.get("event_id") is None:
-        # msg doesn't have event ID, by nack'ing this we may end up in a loop on it
-        error_msg = "Received message without event ID; discarding"
+    if message.attributes.get("event_date") is None:
+        # msg doesn't have event date, by nack'ing this we may end up in a loop on it
+        error_msg = "Received message without event date; discarding"
         logging.warning(error_msg)
         raise ValueError(error_msg)
 
@@ -175,10 +175,10 @@ def validate_message_attributes(message):
         raise value_error
 
 
-def get_database_connection(event_id):
+def get_database_connection(event_date):
     """ returns connection to database """
     db_ref = firestore.Client()
-    return db_ref.collection(u'print_queue/%s/orders' % event_id)
+    return db_ref.collection(f'events/{event_date}/print_queue')
 
 
 def received_message_to_print(message):
@@ -186,7 +186,7 @@ def received_message_to_print(message):
 
     Note: message.ack() is not guaranteed so this method needs to be idempotent
     """
-    logging.debug('Received message id: %s; size %s', message.message_id, message.size)
+    logging.debug(f'Received message id: {message.message_id}; size {message.size}')
 
     try:
         validate_message_attributes(message)
@@ -194,22 +194,20 @@ def received_message_to_print(message):
         # if any exception is thrown, ack the message so we don't process it again
         return message.ack()
 
-    event_id = message.attributes.get("event_id")
+    event_date = message.attributes.get("event_date")
     order_number = int(message.attributes.get("order_number"))
-    logging.debug("Received print message with attributes '%s'", message.attributes)
+    logging.debug(f"Received print message with attributes '{message.attributes}'")
 
     if ARGS.number != 'all':
         if (order_number % 2 == 0 and ARGS.number != 'even') or \
            (order_number % 2 == 1 and ARGS.number != 'odd'):
-            logging.warning("Skipping print message for order number '%s' as we are only printing "
-                            "%s numbers", order_number, ARGS.number)
+            logging.warning(f"Skipping print message for order number '{order_number}' as we "
+                            f"are only printing {ARGS.number} numbers")
             return message.nack()
 
-    # TODO: document use of subcollections to separate by event;
-    # TODO: something needs to create the event document within the firestore collection
     print_queue_ref = None
     try:
-        print_queue_ref = get_database_connection(event_id)
+        print_queue_ref = get_database_connection(event_date)
 
         # if reprint flag is not set, check to see if this label has been printed already
         if message.attributes.get("reprint", None) is None:
@@ -217,8 +215,8 @@ def received_message_to_print(message):
             # if more than one document is returned, then we should assume this is a duplicate
             # message and we should quietly squelch this
             if len(list(query)) > 0:
-                logging.warning("Received duplicate print message for order number '%s'"
-                                " without reprint attribute set; squelching", order_number)
+                logging.warning(f"Received duplicate print message for order number "
+                                f"'{order_number}' without reprint attribute set; squelching")
                 return message.ack()
     except Exception as exc:  # pylint: disable=broad-except
         logging.warning("Exception raised while checking to see if we've printed this label before:"
@@ -230,7 +228,7 @@ def received_message_to_print(message):
         try:
             temp_file.write(base64.b64decode(message.data))
         except base64.binascii.Error as exc:
-            logging.error("Could not base64 decode data: %s", exc)
+            logging.error(f"Could not base64 decode data: {exc}")
             message.ack()
             return
 
@@ -238,8 +236,8 @@ def received_message_to_print(message):
         temp_file.close()  # this does not delete file; this will happen when we exit with clause
 
         try:
-            logging.info("Printing label for order number #%s to printer '%s'...", order_number,
-                         ARGS.printer)
+            logging.info(f"Printing label for order number #{order_number} to printer "
+                         f"'{ARGS.printer}'...")
             # we need spaces around the executable given the space in 'Program Files', and as it is
             # a possibility that the printer name and path to temp_file would have spaces in them as
             # well, we wrap them in quotes too
@@ -249,7 +247,7 @@ def received_message_to_print(message):
                         '-sOutputFile="%printer%{}" "{}"'.format(ARGS.printer, temp_file.name)
             subprocess.run(print_cmd, shell=True, check=True)
         except subprocess.CalledProcessError as ex:
-            logging.error("Unexpected printing error: %s", str(ex))
+            logging.error(f"Unexpected printing error: {ex}")
             # we failed to print, we nack() to retry
             message.nack()
             # sleep 3 seconds as to not overwhelm client
@@ -258,7 +256,7 @@ def received_message_to_print(message):
 
         try:
             if print_queue_ref is None:
-                print_queue_ref = get_database_connection(event_id)
+                print_queue_ref = get_database_connection(event_date)
 
             print_queue_ref.add({
                 u'order_number': order_number,
@@ -270,7 +268,7 @@ def received_message_to_print(message):
                 u'print_timestamp': firestore.SERVER_TIMESTAMP,
             })
         except Exception as exc:  # pylint: disable=broad-except
-            logging.warning("Error raised while adding doc to firestore after printing: %s", exc)
+            logging.warning(f"Error raised while adding doc to firestore after printing: {exc}")
         finally:
             message.ack()
 
