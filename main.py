@@ -16,7 +16,7 @@ import tempfile
 import time
 
 from google import auth
-from google.cloud import firestore, pubsub_v1  # pylint: disable=no-name-in-module
+from google.cloud import pubsub_v1  # pylint: disable=no-name-in-module
 from google.cloud import logging as stackdriver_logging
 
 
@@ -157,28 +157,28 @@ def validate_message_attributes(message):
         logging.warning(error_msg)
         raise ValueError(error_msg)
 
-    if message.attributes.get("event_date") is None:
-        # msg doesn't have event date, by nack'ing this we may end up in a loop on it
-        error_msg = "Received message without event date; discarding"
-        logging.warning(error_msg)
-        raise ValueError(error_msg)
+    #if message.attributes.get("event_date") is None:
+    #    # msg doesn't have event date, by nack'ing this we may end up in a loop on it
+    #    error_msg = "Received message without event date; discarding"
+    #    logging.warning(error_msg)
+    #    raise ValueError(error_msg)
 
-    try:
-        _ = int(message.attributes.get("order_number", None))
-    except TypeError as type_error:
-        # msg does not have order number, by nack'ing this we may end up in a loop on it
-        logging.warning("Received message with no order number; discarding")
-        raise type_error
-    except ValueError as value_error:
-        # msg doesn't have integer order number, by nack'ing this we may end up in a loop on it
-        logging.warning("Received message with invalid order number; discarding")
-        raise value_error
+    #try:
+    #    _ = int(message.attributes.get("order_number", None))
+    #except TypeError as type_error:
+    #    # msg does not have order number, by nack'ing this we may end up in a loop on it
+    #    logging.warning("Received message with no order number; discarding")
+    #    raise type_error
+    #except ValueError as value_error:
+    #    # msg doesn't have integer order number, by nack'ing this we may end up in a loop on it
+    #    logging.warning("Received message with invalid order number; discarding")
+    #    raise value_error
 
 
-def get_database_connection(event_date):
-    """ returns connection to database """
-    db_ref = firestore.Client()
-    return db_ref.collection(f'events/{event_date}/print_queue')
+#def get_database_connection(event_date):
+#    """ returns connection to database """
+#    db_ref = firestore.Client()
+#    return db_ref.collection(f'events/{event_date}/print_queue')
 
 
 def received_message_to_print(message):
@@ -194,8 +194,8 @@ def received_message_to_print(message):
         # if any exception is thrown, ack the message so we don't process it again
         return message.ack()
 
-    event_date = message.attributes.get("event_date")
-    order_number = int(message.attributes.get("order_number"))
+#    event_date = message.attributes.get("event_date")
+#    order_number = int(message.attributes.get("order_number"))
     logging.debug(f"Received print message with attributes '{message.attributes}'")
 
     if ARGS.number != 'all':
@@ -205,22 +205,22 @@ def received_message_to_print(message):
                             f"are only printing {ARGS.number} numbers")
             return message.nack()
 
-    print_queue_ref = None
-    try:
-        print_queue_ref = get_database_connection(event_date)
-
-        # if reprint flag is not set, check to see if this label has been printed already
-        if message.attributes.get("reprint", None) is None:
-            query = print_queue_ref.where(u'order_number', u'==', order_number).stream()
-            # if more than one document is returned, then we should assume this is a duplicate
-            # message and we should quietly squelch this
-            if len(list(query)) > 0:
-                logging.warning(f"Received duplicate print message for order number "
-                                f"'{order_number}' without reprint attribute set; squelching")
-                return message.ack()
-    except Exception as exc:  # pylint: disable=broad-except
-        logging.warning("Exception raised while checking to see if we've printed this label before:"
-                        " %s", exc)
+#    print_queue_ref = None
+#    try:
+#        print_queue_ref = get_database_connection(event_date)
+#
+#        # if reprint flag is not set, check to see if this label has been printed already
+#        if message.attributes.get("reprint", None) is None:
+#            query = print_queue_ref.where(u'order_number', u'==', order_number).stream()
+#            # if more than one document is returned, then we should assume this is a duplicate
+#            # message and we should quietly squelch this
+#            if len(list(query)) > 0:
+#                logging.warning(f"Received duplicate print message for order number "
+#                                f"'{order_number}' without reprint attribute set; squelching")
+#                return message.ack()
+#    except Exception as exc:  # pylint: disable=broad-except
+#        logging.warning("Exception raised while checking to see if we've printed this label before:"
+#                        " %s", exc)
 
     # if we're here, we should try printing the file
     with WinNamedTempFile() as temp_file:
@@ -254,23 +254,23 @@ def received_message_to_print(message):
             time.sleep(3)
             return
 
-        try:
-            if print_queue_ref is None:
-                print_queue_ref = get_database_connection(event_date)
-
-            print_queue_ref.add({
-                u'order_number': order_number,
-                u'printer_name': str(ARGS.printer),
-                u'hostname': str(platform.node()),
-                u'message_attributes': dict(message.attributes),
-                u'message_id': str(message.message_id),
-                u'message_publish_time': str(message.publish_time),
-                u'print_timestamp': firestore.SERVER_TIMESTAMP,
-            })
-        except Exception as exc:  # pylint: disable=broad-except
-            logging.warning(f"Error raised while adding doc to firestore after printing: {exc}")
-        finally:
-            message.ack()
+#        try:
+#            if print_queue_ref is None:
+#                print_queue_ref = get_database_connection(event_date)
+#
+#            print_queue_ref.add({
+#                u'order_number': order_number,
+#                u'printer_name': str(ARGS.printer),
+#                u'hostname': str(platform.node()),
+#                u'message_attributes': dict(message.attributes),
+#                u'message_id': str(message.message_id),
+#                u'message_publish_time': str(message.publish_time),
+#                u'print_timestamp': firestore.SERVER_TIMESTAMP,
+#            })
+#        except Exception as exc:  # pylint: disable=broad-except
+#            logging.warning(f"Error raised while adding doc to firestore after printing: {exc}")
+#        finally:
+    message.ack()
 
 
 if __name__ == '__main__':  # pragma: no cover
